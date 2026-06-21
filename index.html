@@ -701,8 +701,8 @@ function renderPatSummary(trades) {
 const XAU_CL = [
   'SSMT confirmed — XAGUSD sweep failed, opposite direction',
   'TDO bias aligned — above TDO = bearish, below = bullish',
-  'Goldbach level as entry — entry at confirmed GB level',
-  'SL on End Node swing — exact wick of 29/35 candle',
+  'Goldbach level as entry — entry at a confirmed GB level',
+  'SL on End Node swing — SL on exact wick of 29/35 candle',
   'QT cycle aligned — Weekly/Daily/90m phase confirmed',
   'SL on candle that created SSMT'
 ];
@@ -757,7 +757,7 @@ function pickDir(dir,btn) {
 }
 
 function renderCL() {
-  const items=LS.inst==='XAUUSD'?XAU_CL:GEN_CL;
+  const items=XAU_CL;
   LS.cl=new Array(items.length).fill(null);
   document.getElementById('cl-items').innerHTML=items.map((txt,i)=>`
     <div class="cli">
@@ -910,7 +910,7 @@ function openModal(id) {
   if(!t)return;
   modalId=t.id;
   document.getElementById('m-title').textContent=`${t.instrument} — ${t.date}`;
-  const cl=t.instrument==='XAUUSD'?XAU_CL:GEN_CL;
+  const cl=XAU_CL;
   const chk=(t.checklist&&t.checklist.length)?cl.map((txt,i)=>{
     const v=t.checklist[i];
     return `<div style="display:flex;gap:7px;padding:5px 0;border-bottom:1px solid var(--border);align-items:flex-start">
@@ -1136,7 +1136,7 @@ function chkPickCustom(v) {
 function renderChkCL() {
   if(!CK.inst) return;
   document.getElementById('chk-cl-wrap').style.display = 'block';
-  const items = CK.inst === 'XAUUSD' ? XAU_CL : GEN_CL;
+  const items = XAU_CL;
   CK.cl = new Array(items.length).fill(null);
   document.getElementById('chk-cl-items').innerHTML = items.map((txt,i) => `
     <div class="cli">
