@@ -726,14 +726,29 @@ function renderPatSummary(trades) {
 // ─────────────────────────────────────────────
 // LOG TRADE STATE
 // ─────────────────────────────────────────────
-const XAU_CL = [
-  'SSMT confirmed — XAGUSD sweep failed, opposite direction',
-  'TDO bias aligned — above TDO = bearish, below = bullish',
-  'Goldbach level as entry — entry at a confirmed GB level',
-  'SL on End Node swing — SL on exact wick of 29/35 candle',
-  'QT cycle aligned — Weekly/Daily/90m phase confirmed',
-  'SL on candle that created SSMT'
-];
+const SSMT_MAP = {
+  'XAUUSD':    'SSMT confirmed — XAGUSD sweep failed, opposite direction',
+  'XAGUSD':    'SSMT confirmed — XAUUSD sweep failed, opposite direction',
+  'EURUSD':    'SSMT confirmed — GBPUSD or DXY failed to confirm, opposite direction',
+  'GBPUSD':    'SSMT confirmed — EURUSD or DXY failed to confirm, opposite direction',
+  'USDJPY':    'SSMT confirmed — DXY or US10Y failed to confirm, opposite direction',
+  'BTCUSD':    'SSMT confirmed — ETHUSD sweep failed, opposite direction',
+  'NAS100':    'SSMT confirmed — SP500 failed to confirm, opposite direction',
+  'US30':      'SSMT confirmed — SP500 failed to confirm, opposite direction',
+  'CRUDE OIL': 'SSMT confirmed — DXY or USDCAD failed to confirm, opposite direction'
+};
+function getChecklistItems(inst) {
+  const ssmt = SSMT_MAP[inst] || 'SSMT confirmed — correlated asset failed to confirm, opposite direction';
+  return [
+    ssmt,
+    'TDO bias aligned — above TDO = bearish, below = bullish',
+    'Goldbach level as entry — entry at a confirmed GB level',
+    'SL on End Node swing — SL on exact wick of 29/35 candle',
+    'QT cycle aligned — Weekly/Daily/90m phase confirmed',
+    'SL on candle that created SSMT'
+  ];
+}
+const XAU_CL = getChecklistItems('XAUUSD');
 const GEN_CL = [
   'HTF bias confirmed',
   'Entry TF structure aligned',
@@ -785,7 +800,7 @@ function pickDir(dir,btn) {
 }
 
 function renderCL() {
-  const items=XAU_CL;
+  const items=getChecklistItems(LS.inst);
   LS.cl=new Array(items.length).fill(null);
   document.getElementById('cl-items').innerHTML=items.map((txt,i)=>`
     <div class="cli">
@@ -938,7 +953,7 @@ function openModal(id) {
   if(!t)return;
   modalId=t.id;
   document.getElementById('m-title').textContent=`${t.instrument} — ${t.date}`;
-  const cl=XAU_CL;
+  const cl=getChecklistItems(t.instrument);
   const chk=(t.checklist&&t.checklist.length)?cl.map((txt,i)=>{
     const v=t.checklist[i];
     return `<div style="display:flex;gap:7px;padding:5px 0;border-bottom:1px solid var(--border);align-items:flex-start">
@@ -1164,7 +1179,7 @@ function chkPickCustom(v) {
 function renderChkCL() {
   if(!CK.inst) return;
   document.getElementById('chk-cl-wrap').style.display = 'block';
-  const items = XAU_CL;
+  const items = getChecklistItems(CK.inst);
   CK.cl = new Array(items.length).fill(null);
   document.getElementById('chk-cl-items').innerHTML = items.map((txt,i) => `
     <div class="cli">
