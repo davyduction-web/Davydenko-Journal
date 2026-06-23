@@ -125,7 +125,7 @@ select.fi option{background:#111;color:#fff}
 .ob[data-o="MISSED"].active{background:var(--gdim);border-color:var(--gold);color:var(--gold)}
 
 /* IMAGE SLOTS */
-.islots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.islots{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 .isl{aspect-ratio:4/3;background:var(--surface);border:1px dashed var(--border);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;cursor:pointer;overflow:hidden;position:relative}
 .isl img{width:100%;height:100%;object-fit:cover}
 .isll{font-size:9px;color:var(--dim);text-align:center;line-height:1.3;padding:4px}
@@ -409,7 +409,7 @@ textarea.fi{resize:vertical;min-height:76px;font-family:inherit}
 
       <!-- Chart Images -->
       <div class="fs">
-        <label class="fl">Chart Images (3 slots)</label>
+        <label class="fl">Chart Images (10 slots)</label>
         <div class="islots">
           <div class="isl" id="isl-0" onclick="openSlot(0)">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
@@ -422,6 +422,34 @@ textarea.fi{resize:vertical;min-height:76px;font-family:inherit}
           <div class="isl" id="isl-2" onclick="openSlot(2)">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
             <span class="isll">Result</span>
+          </div>
+          <div class="isl" id="isl-3" onclick="openSlot(3)">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <span class="isll">Chart 4</span>
+          </div>
+          <div class="isl" id="isl-4" onclick="openSlot(4)">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <span class="isll">Chart 5</span>
+          </div>
+          <div class="isl" id="isl-5" onclick="openSlot(5)">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <span class="isll">Chart 6</span>
+          </div>
+          <div class="isl" id="isl-6" onclick="openSlot(6)">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <span class="isll">Chart 7</span>
+          </div>
+          <div class="isl" id="isl-7" onclick="openSlot(7)">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <span class="isll">Chart 8</span>
+          </div>
+          <div class="isl" id="isl-8" onclick="openSlot(8)">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <span class="isll">Chart 9</span>
+          </div>
+          <div class="isl" id="isl-9" onclick="openSlot(9)">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <span class="isll">Chart 10</span>
           </div>
         </div>
         <input type="file" id="img-in" accept="image/*" style="display:none" onchange="handleImg(event)">
@@ -714,10 +742,10 @@ const GEN_CL = [
   'No conflicting news'
 ];
 
-let LS = {inst:'',dir:'',mood:'',pat:'',out:'',cl:[],imgs:[null,null,null],slot:0,editId:null};
+let LS = {inst:'',dir:'',mood:'',pat:'',out:'',cl:[],imgs:[null,null,null,null,null,null,null,null,null,null],slot:0,editId:null};
 
 function resetLog() {
-  LS = {inst:'',dir:'',mood:'',pat:'',out:'',cl:[],imgs:[null,null,null],slot:0,editId:null};
+  LS = {inst:'',dir:'',mood:'',pat:'',out:'',cl:[],imgs:[null,null,null,null,null,null,null,null,null,null],slot:0,editId:null};
   document.getElementById('log-title').textContent='LOG TRADE';
   const now=new Date();
   document.getElementById('l-date').value=now.toISOString().slice(0,10);
@@ -807,7 +835,7 @@ function handleImg(e) {
 }
 
 function drawSlot(i,src) {
-  const lbls=['HTF Chart','Entry TF','Result'];
+  const lbls=['HTF Chart','Entry TF','Result','Chart 4','Chart 5','Chart 6','Chart 7','Chart 8','Chart 9','Chart 10'];
   const el=document.getElementById('isl-'+i);
   if(src){
     el.innerHTML=`<img src="${src}" alt="chart"><button class="isld" onclick="rmImg(event,${i})">✕</button>`;
