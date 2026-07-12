@@ -264,6 +264,7 @@ textarea.fi{resize:vertical;min-height:76px;font-family:inherit}
 .mt5-banner{background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.3);border-radius:8px;padding:9px 12px;font-size:11px;color:var(--gold);text-align:center;margin-bottom:10px;font-weight:600;letter-spacing:.5px}</style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 <div class="app">
@@ -301,7 +302,22 @@ textarea.fi{resize:vertical;min-height:76px;font-family:inherit}
         <div id="h-pats"></div>
       </div>
       <button class="qlog" onclick="navTo('log')">+ LOG NEW TRADE</button>
-      <button class="qlog" style="margin-top:8px;background:transparent;border:1px solid var(--border);color:var(--dim);font-size:11px;letter-spacing:1px" onclick="navTo('accounts')">MANAGE ACCOUNTS</button>
+      <div style="display:flex;gap:8px;margin:8px 14px 0">
+        <button class="qlog" style="margin:0;flex:1;background:transparent;border:1px solid var(--border);color:var(--dim);font-size:11px;letter-spacing:1px" onclick="navTo('accounts')">MANAGE ACCOUNTS</button>
+        <button class="qlog" style="margin:0;flex:1;background:transparent;border:1px solid var(--border);color:var(--dim);font-size:11px;letter-spacing:1px" onclick="exportData()">EXPORT DATA</button>
+        <button class="qlog" style="margin:0;flex:1;background:transparent;border:1px solid var(--border);color:var(--dim);font-size:11px;letter-spacing:1px" onclick="document.getElementById('import-file-input').click()">IMPORT DATA</button>
+      </div>
+      <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="importData(this.files[0]);this.value=''">
+      <div style="display:flex;gap:8px;margin:6px 14px 0">
+        <button class="qlog" style="margin:0;flex:1;background:transparent;border:1px solid var(--border);color:var(--dim);font-size:11px;letter-spacing:1px" onclick="backupToDrive()">BACKUP TO DRIVE</button>
+        <button class="qlog" style="margin:0;flex:1;background:transparent;border:1px solid var(--border);color:var(--dim);font-size:11px;letter-spacing:1px" onclick="restoreFromDrive()">RESTORE FROM DRIVE</button>
+      </div>
+      <div id="h-backup-status" style="text-align:center;font-size:11px;padding:6px 14px 0"></div>
+      <div id="h-undo-import" style="display:none;text-align:center;padding:2px 14px 4px">
+        <button style="background:transparent;border:none;color:var(--dim);font-size:11px;cursor:pointer;text-decoration:underline;letter-spacing:.3px;opacity:.7" onclick="undoLastImport()">↩ undo last import</button>
+      </div>
+      <div id="h-faceid-toggle" style="text-align:center;padding:2px 14px 0"></div>
+      <div id="h-auth-link" style="text-align:center;padding:4px 14px 6px"></div>
     </div>
 
     <!-- ══════════════════════════════════
@@ -600,6 +616,22 @@ textarea.fi{resize:vertical;min-height:76px;font-family:inherit}
         <button class="fc" data-f="BTCUSD" onclick="hFilter(this)">BTCUSD</button>
         <button class="fc" data-f="NAS100" onclick="hFilter(this)">NAS100</button>
       </div>
+      <div style="display:flex;gap:8px;padding:6px 14px 2px">
+        <select id="hist-sys-sel" onchange="hSystemFilt=this.value;renderHistory()" style="background:var(--s2);border:1px solid var(--border);color:var(--dim);font-size:10px;padding:4px 6px;border-radius:6px;cursor:pointer;flex:1;outline:none">
+          <option value="">All Systems</option>
+          <option value="davydenko">DQTS &amp; DGMS</option>
+          <option value="ict">ICT</option>
+          <option value="sr">Support &amp; Resistance</option>
+          <option value="sd">Supply &amp; Demand</option>
+          <option value="pa">Price Action</option>
+          <option value="crt">CRT</option>
+          <option value="qt">Quarterly Theory</option>
+          <option value="goldbach">Goldbach</option>
+        </select>
+        <select id="hist-acc-sel" onchange="hAccountFilt=this.value;renderHistory()" style="background:var(--s2);border:1px solid var(--border);color:var(--dim);font-size:10px;padding:4px 6px;border-radius:6px;cursor:pointer;flex:1;outline:none">
+          <option value="">All Accounts</option>
+        </select>
+      </div>
       <div id="hist-list" style="padding-bottom:4px"></div>
     </div>
 
@@ -828,6 +860,15 @@ textarea.fi{resize:vertical;min-height:76px;font-family:inherit}
 <div class="toast" id="toast"></div>
 
 <!-- AUTH SCREEN -->
+<!-- FACE ID LOCK OVERLAY -->
+<div id="faceid-lock" style="display:none;position:fixed;inset:0;z-index:9999;background:#0A0A0A;flex-direction:column;align-items:center;justify-content:center;padding:24px;max-width:430px;margin:0 auto;left:50%;transform:translateX(-50%);width:100%">
+  <div style="font-size:48px;margin-bottom:16px">🔒</div>
+  <div style="color:var(--gold);font-size:13px;letter-spacing:3px;font-weight:700;margin-bottom:8px">TRADING JOURNAL</div>
+  <div style="color:var(--dim);font-size:11px;margin-bottom:32px;text-align:center">This journal is protected by Face ID</div>
+  <button onclick="unlockWithFaceId()" style="width:100%;max-width:280px;padding:14px;background:var(--gdim);border:1px solid var(--gold);border-radius:10px;color:var(--gold);font-size:14px;font-weight:700;cursor:pointer;letter-spacing:1px">Unlock with Face ID</button>
+  <button onclick="resetFaceIdLock()" style="background:transparent;border:none;color:var(--dim);font-size:10px;cursor:pointer;margin-top:20px;opacity:.5;text-decoration:underline">Reset Face ID Lock</button>
+</div>
+
 <div id="auth-screen" style="display:none">
   <img id="auth-logo" style="width:72px;height:72px;border-radius:12px;object-fit:cover;margin-bottom:16px" alt="">
   <div style="color:#C9A84C;font-size:13px;letter-spacing:3px;font-weight:700;margin-bottom:4px">PRECISION TRADERS</div>
@@ -928,6 +969,139 @@ async function signOut() {
 function skipAuth() {
   hideAuthScreen();
   renderHome();
+}
+
+function updateHomeAuthLink() {
+  const el = document.getElementById('h-auth-link');
+  if (!el) return;
+  if (currentUser) {
+    el.innerHTML = `<button style="background:transparent;border:none;color:var(--dim);font-size:10px;cursor:pointer;opacity:.6;letter-spacing:.3px" onclick="signOut()">Sign Out</button>`;
+  } else {
+    el.innerHTML = `<button style="background:transparent;border:none;color:var(--dim);font-size:10px;cursor:pointer;opacity:.6;letter-spacing:.3px" onclick="showAuthScreen()">Sign In</button>`;
+  }
+}
+
+// ─────────────────────────────────────────────
+// FACE ID LOCK
+// ─────────────────────────────────────────────
+const FACEID_KEY = 'tj_faceid_cred_id';
+
+function renderFaceIdToggle() {
+  const el = document.getElementById('h-faceid-toggle');
+  if (!el) return;
+  const enabled = !!localStorage.getItem(FACEID_KEY);
+  if (enabled) {
+    el.innerHTML = `<button style="background:transparent;border:none;color:var(--dim);font-size:10px;cursor:pointer;opacity:.6;letter-spacing:.3px" onclick="disableFaceIdLock()">Disable Face ID Lock</button>`;
+  } else {
+    const supported = !!(window.PublicKeyCredential && navigator.credentials);
+    if (!supported) { el.innerHTML = ''; return; }
+    el.innerHTML = `<button style="background:transparent;border:none;color:var(--dim);font-size:10px;cursor:pointer;opacity:.6;letter-spacing:.3px" onclick="enableFaceIdLock()">Enable Face ID Lock</button>`;
+  }
+}
+
+async function enableFaceIdLock() {
+  if (!window.PublicKeyCredential || !navigator.credentials) {
+    toast('Face ID / WebAuthn not available on this device');
+    return;
+  }
+  try {
+    const challenge = crypto.getRandomValues(new Uint8Array(32));
+    const cred = await navigator.credentials.create({
+      publicKey: {
+        challenge,
+        rp: { name: 'Trading Journal' },
+        user: { id: new Uint8Array(16), name: 'local', displayName: 'Local User' },
+        pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+        authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required' },
+        timeout: 60000
+      }
+    });
+    if (!cred) { toast('Face ID setup cancelled'); return; }
+    localStorage.setItem(FACEID_KEY, btoa(String.fromCharCode(...new Uint8Array(cred.rawId))));
+    toast('Face ID lock enabled');
+    renderFaceIdToggle();
+  } catch (e) {
+    if (e.name === 'NotAllowedError') toast('Face ID setup cancelled');
+    else toast(`Face ID setup failed: ${e.message}`);
+  }
+}
+
+function disableFaceIdLock() {
+  if (!confirm('Remove Face ID lock? The app will open without authentication.')) return;
+  localStorage.removeItem(FACEID_KEY);
+  toast('Face ID lock disabled');
+  renderFaceIdToggle();
+}
+
+function resetFaceIdLock() {
+  localStorage.removeItem(FACEID_KEY);
+  document.getElementById('faceid-lock').style.display = 'none';
+  skipAuth();
+}
+
+async function checkFaceIdLock(proceedFn) {
+  const stored = localStorage.getItem(FACEID_KEY);
+  if (!stored) { proceedFn(); return; }
+
+  // Show lock overlay
+  document.getElementById('faceid-lock').style.display = 'flex';
+
+  // Store proceed callback for the Unlock button
+  window._faceIdProceed = proceedFn;
+}
+
+async function unlockWithFaceId() {
+  const stored = localStorage.getItem(FACEID_KEY);
+  if (!stored) { document.getElementById('faceid-lock').style.display = 'none'; return; }
+
+  if (!window.PublicKeyCredential || !navigator.credentials) {
+    // WebAuthn unavailable — fail open with notice rather than hard-lock
+    toast('Face ID unavailable on this device — lock bypassed');
+    localStorage.removeItem(FACEID_KEY);
+    document.getElementById('faceid-lock').style.display = 'none';
+    if (window._faceIdProceed) window._faceIdProceed();
+    return;
+  }
+
+  try {
+    let rawId;
+    try {
+      const bytes = atob(stored);
+      rawId = new Uint8Array(bytes.length);
+      for (let i = 0; i < bytes.length; i++) rawId[i] = bytes.charCodeAt(i);
+    } catch (_) {
+      // Stored credential ID is corrupt — fail open
+      toast('Credential data corrupted — lock cleared');
+      localStorage.removeItem(FACEID_KEY);
+      document.getElementById('faceid-lock').style.display = 'none';
+      if (window._faceIdProceed) window._faceIdProceed();
+      return;
+    }
+
+    const challenge = crypto.getRandomValues(new Uint8Array(32));
+    const assertion = await navigator.credentials.get({
+      publicKey: {
+        challenge,
+        allowCredentials: [{ type: 'public-key', id: rawId }],
+        userVerification: 'required',
+        timeout: 60000
+      }
+    });
+    if (assertion) {
+      document.getElementById('faceid-lock').style.display = 'none';
+      if (window._faceIdProceed) window._faceIdProceed();
+    }
+  } catch (e) {
+    if (e.name === 'NotAllowedError') {
+      toast('Face ID verification cancelled');
+    } else {
+      // Unknown error — fail open rather than permanently lock user out
+      toast(`Face ID error — lock bypassed: ${e.message}`);
+      localStorage.removeItem(FACEID_KEY);
+      document.getElementById('faceid-lock').style.display = 'none';
+      if (window._faceIdProceed) window._faceIdProceed();
+    }
+  }
 }
 
 // ─── Remote data ───
@@ -1092,6 +1266,25 @@ function renderHome() {
 
   renderCal(homeY,homeM,month);
   renderPatSummary(all);
+
+  // backup recency status
+  const lastExp = localStorage.getItem('tj_last_export_at');
+  const bsEl = document.getElementById('h-backup-status');
+  if (!lastExp) {
+    bsEl.innerHTML = '<span style="color:var(--loss)">⚠ Never backed up</span>';
+  } else {
+    const days = Math.floor((Date.now() - new Date(lastExp).getTime()) / 86400000);
+    const label = days === 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`;
+    const color = days < 7 ? 'var(--dim)' : days < 14 ? 'var(--gold)' : 'var(--loss)';
+    bsEl.innerHTML = `<span style="color:${color}">Last backup: ${label}</span>`;
+  }
+
+  // undo button — only visible when a stash exists
+  document.getElementById('h-undo-import').style.display =
+    localStorage.getItem('tj_pre_import_stash') ? 'block' : 'none';
+
+  updateHomeAuthLink();
+  renderFaceIdToggle();
 }
 
 function renderCal(y,m,trades) {
@@ -1410,6 +1603,8 @@ function cancelEdit(){LS.editId=null;navTo('history');}
 // HISTORY
 // ─────────────────────────────────────────────
 let hfilt='ALL';
+let hSystemFilt='';
+let hAccountFilt='';
 
 function hFilter(btn) {
   document.querySelectorAll('.fc').forEach(b=>b.classList.remove('active'));
@@ -1417,8 +1612,18 @@ function hFilter(btn) {
 }
 
 function renderHistory() {
+  // Populate account dropdown from non-archived accounts
+  const accSel = document.getElementById('hist-acc-sel');
+  if (accSel) {
+    const accs = DB.accounts().filter(a => !a.archived);
+    accSel.innerHTML = '<option value="">All Accounts</option>' +
+      accs.map(a => `<option value="${a.id}"${a.id===hAccountFilt?' selected':''}>${a.name}</option>`).join('');
+  }
+
   let trades=[...DB.trades()].sort((a,b)=>new Date(b.date+' '+(b.time||'00:00'))-new Date(a.date+' '+(a.time||'00:00')));
   if(hfilt!=='ALL') trades=trades.filter(t=>t.outcome===hfilt||t.instrument===hfilt);
+  if(hSystemFilt) trades=trades.filter(t=>t.system===hSystemFilt);
+  if(hAccountFilt) trades=trades.filter(t=>t.accountId===hAccountFilt);
   const el=document.getElementById('hist-list');
   if(!trades.length){
     el.innerHTML='<div class="empty"><svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><p>No trades logged yet.<br>Tap Log to add your first trade.</p></div>';
@@ -2378,6 +2583,230 @@ function toast(msg) {
 }
 
 // ─────────────────────────────────────────────
+// EXPORT / IMPORT
+// ─────────────────────────────────────────────
+function buildBackupPayload() {
+  return {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    trades: DB.trades(),
+    reviews: DB.reviews(),
+    accounts: DB.accounts(),
+    mt5ColumnMap: JSON.parse(localStorage.getItem('mt5_column_map')||'{}')
+  };
+}
+
+function exportData() {
+  const today = new Date().toISOString().slice(0,10);
+  const payload = buildBackupPayload();
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `trading-journal-backup-${today}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  localStorage.setItem('tj_last_export_at', new Date().toISOString());
+  toast(`Backup exported — ${payload.trades.length} trades saved`);
+}
+
+function importData(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    let parsed;
+    try { parsed = JSON.parse(e.target.result); } catch(_) {
+      toast('Invalid backup file');
+      return;
+    }
+    if (!parsed || !Array.isArray(parsed.trades) || parsed.version == null) {
+      toast('Invalid backup file');
+      return;
+    }
+    const dateLabel = parsed.exportedAt ? new Date(parsed.exportedAt).toLocaleString() : 'unknown date';
+    const ok = confirm(
+      `This will REPLACE all current trades, accounts, and reviews with the backup from ${dateLabel}. This cannot be undone. Continue?`
+    );
+    if (!ok) return;
+    localStorage.setItem('tj_pre_import_stash', JSON.stringify({
+      trades: DB.trades(), reviews: DB.reviews(), accounts: DB.accounts(),
+      mt5ColumnMap: JSON.parse(localStorage.getItem('mt5_column_map')||'{}'),
+      stashedAt: new Date().toISOString()
+    }));
+    DB.save(parsed.trades);
+    DB.saveRev(parsed.reviews || []);
+    DB.saveAcc(parsed.accounts || []);
+    if (parsed.mt5ColumnMap && typeof parsed.mt5ColumnMap === 'object') {
+      localStorage.setItem('mt5_column_map', JSON.stringify(parsed.mt5ColumnMap));
+    }
+    navTo(curScreen);
+    toast(`Import complete — ${parsed.trades.length} trades loaded`);
+  };
+  reader.readAsText(file);
+}
+
+function undoLastImport() {
+  const raw = localStorage.getItem('tj_pre_import_stash');
+  if (!raw) { toast('No import to undo'); return; }
+  let stash;
+  try { stash = JSON.parse(raw); } catch(_) { toast('Stash corrupted — cannot undo'); return; }
+  const dateLabel = stash.stashedAt ? new Date(stash.stashedAt).toLocaleString() : 'unknown time';
+  const ok = confirm(`This will REPLACE your current data with the snapshot saved at ${dateLabel} (before your last import). This cannot be undone. Continue?`);
+  if (!ok) return;
+  DB.save(stash.trades || []);
+  DB.saveRev(stash.reviews || []);
+  DB.saveAcc(stash.accounts || []);
+  if (stash.mt5ColumnMap && typeof stash.mt5ColumnMap === 'object') {
+    localStorage.setItem('mt5_column_map', JSON.stringify(stash.mt5ColumnMap));
+  }
+  localStorage.removeItem('tj_pre_import_stash');
+  navTo(curScreen);
+  toast(`Import undone — ${(stash.trades||[]).length} trades restored`);
+}
+
+// ─────────────────────────────────────────────
+// GOOGLE DRIVE BACKUP / RESTORE
+// ─────────────────────────────────────────────
+const DRIVE_CLIENT_ID = '989590475720-gq9s3959ba35lfitqcv35qisdgtht80c.apps.googleusercontent.com';
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const DRIVE_FILENAME = 'trading-journal-backup.json';
+
+function getDriveToken(callback) {
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: DRIVE_CLIENT_ID,
+    scope: DRIVE_SCOPE,
+    callback: (response) => {
+      if (response && response.access_token) {
+        callback(response.access_token);
+      } else {
+        toast('Google sign-in failed');
+      }
+    }
+  });
+  client.requestAccessToken();
+}
+
+async function backupToDrive() {
+  getDriveToken(async (token) => {
+    try {
+      const payload = buildBackupPayload();
+      const jsonStr = JSON.stringify(payload, null, 2);
+
+      // Search for existing file
+      const searchRes = await fetch(
+        `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`name='${DRIVE_FILENAME}' and trashed=false`)}&fields=files(id,name)`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!searchRes.ok) {
+        const err = await searchRes.json().catch(() => ({}));
+        toast(`Drive search failed: ${err.error?.message || searchRes.status}`);
+        return;
+      }
+      const searchData = await searchRes.json();
+      const existing = searchData.files && searchData.files[0];
+
+      const metadata = { name: DRIVE_FILENAME, mimeType: 'application/json' };
+      const boundary = 'tj_drive_boundary';
+      const body = [
+        `--${boundary}`,
+        'Content-Type: application/json; charset=UTF-8',
+        '',
+        JSON.stringify(metadata),
+        `--${boundary}`,
+        'Content-Type: application/json',
+        '',
+        jsonStr,
+        `--${boundary}--`
+      ].join('\r\n');
+
+      let uploadRes;
+      if (existing) {
+        uploadRes = await fetch(
+          `https://www.googleapis.com/upload/drive/v3/files/${existing.id}?uploadType=multipart`,
+          {
+            method: 'PATCH',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': `multipart/related; boundary=${boundary}`
+            },
+            body
+          }
+        );
+      } else {
+        uploadRes = await fetch(
+          'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': `multipart/related; boundary=${boundary}`
+            },
+            body
+          }
+        );
+      }
+
+      if (!uploadRes.ok) {
+        const err = await uploadRes.json().catch(() => ({}));
+        toast(`Drive backup failed: ${err.error?.message || uploadRes.status}`);
+        return;
+      }
+      localStorage.setItem('tj_last_export_at', new Date().toISOString());
+      // Re-render backup status text immediately
+      const bsEl = document.getElementById('h-backup-status');
+      if (bsEl) bsEl.innerHTML = '<span style="color:var(--dim)">Last backup: today</span>';
+      toast('Backed up to Drive');
+    } catch (e) {
+      toast(`Drive backup error: ${e.message}`);
+    }
+  });
+}
+
+async function restoreFromDrive() {
+  getDriveToken(async (token) => {
+    try {
+      // Search for backup file
+      const searchRes = await fetch(
+        `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`name='${DRIVE_FILENAME}' and trashed=false`)}&fields=files(id,name)`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!searchRes.ok) {
+        const err = await searchRes.json().catch(() => ({}));
+        toast(`Drive search failed: ${err.error?.message || searchRes.status}`);
+        return;
+      }
+      const searchData = await searchRes.json();
+      const existing = searchData.files && searchData.files[0];
+
+      if (!existing) {
+        toast('No backup found in Drive');
+        return;
+      }
+
+      // Download file content
+      const dlRes = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${existing.id}?alt=media`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!dlRes.ok) {
+        const err = await dlRes.json().catch(() => ({}));
+        toast(`Drive download failed: ${err.error?.message || dlRes.status}`);
+        return;
+      }
+      const text = await dlRes.text();
+
+      // Reuse importData's validation and confirm logic via a synthetic File
+      const file = new File([text], DRIVE_FILENAME, { type: 'application/json' });
+      importData(file);
+    } catch (e) {
+      toast(`Drive restore error: ${e.message}`);
+    }
+  });
+}
+
+// ─────────────────────────────────────────────
 // ACCOUNTS
 // ─────────────────────────────────────────────
 let accFormState = {id:null, type:'prop', phase:'challenge', ddType:'balance'};
@@ -2662,15 +3091,23 @@ renderCL();
 (function(){
   const sp = document.getElementById('splash');
   if(!sp) return;
-  setTimeout(async () => {
+  async function doInit() {
     sp.classList.add('hide');
     setTimeout(() => { sp.style.display = 'none'; }, 400);
     try {
       const { data: { session } } = await sb.auth.getSession();
       if(session) { currentUser = session.user; await initAfterAuth(); }
-      else { showAuthScreen(); }
-    } catch(e) { showAuthScreen(); }
-  }, 1500);
+      else { skipAuth(); }
+    } catch(e) { skipAuth(); }
+  }
+  if (localStorage.getItem(FACEID_KEY)) {
+    // Lock is enabled — skip splash animation, show lock overlay immediately
+    sp.style.display = 'none';
+    checkFaceIdLock(doInit);
+  } else {
+    // Normal flow — splash for 1500ms then init
+    setTimeout(doInit, 1500);
+  }
 })();
 </script>
 </body>
