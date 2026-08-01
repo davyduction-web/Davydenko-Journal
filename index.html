@@ -295,14 +295,14 @@ textarea.fi{resize:vertical;min-height:76px;font-family:inherit}
 .mt5-map-sel:focus{border-color:var(--gold)}
 .mt5-banner{background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.3);border-radius:8px;padding:9px 12px;font-size:11px;color:var(--gold);text-align:center;margin-bottom:10px;font-weight:600;letter-spacing:.5px}
 .isl svg{stroke:var(--dim)}
-.wp-wrap{display:flex;align-items:center;justify-content:center;background:var(--surface);border:1px solid var(--border);border-radius:8px;height:108px;position:relative;overflow:hidden}
+.wp-wrap{display:flex;align-items:center;justify-content:center;background:var(--surface);border:1px solid var(--border);border-radius:8px;height:156px;position:relative;overflow:hidden}
 .wp-wrap::before,.wp-wrap::after{content:'';position:absolute;left:0;right:0;z-index:2;pointer-events:none}
-.wp-wrap::before{top:0;height:36px;background:linear-gradient(to bottom,var(--surface),transparent)}
-.wp-wrap::after{bottom:0;height:36px;background:linear-gradient(to top,var(--surface),transparent)}
-.wp-col{height:108px;overflow-y:scroll;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex:0 0 52px}
+.wp-wrap::before{top:0;height:52px;background:linear-gradient(to bottom,var(--surface),transparent)}
+.wp-wrap::after{bottom:0;height:52px;background:linear-gradient(to top,var(--surface),transparent)}
+.wp-col{height:156px;overflow-y:scroll;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex:0 0 52px}
 .wp-col::-webkit-scrollbar{display:none}
-.wp-rail{padding:36px 0}
-.wp-item{height:36px;display:flex;align-items:center;justify-content:center;scroll-snap-align:center;font-family:'Space Mono',monospace;font-size:11px;opacity:.2;color:var(--dim);cursor:pointer;transition:font-size .1s,opacity .1s,color .1s;user-select:none;-webkit-user-select:none}
+.wp-rail{padding:52px 0}
+.wp-item{height:52px;display:flex;align-items:center;justify-content:center;scroll-snap-align:center;font-family:'Space Mono',monospace;font-size:12px;opacity:.18;color:var(--dim);cursor:pointer;transition:font-size .2s,opacity .2s,color .2s;user-select:none;-webkit-user-select:none}
 .wp-sep{font-family:'Space Mono',monospace;font-size:20px;color:var(--dim);flex-shrink:0;padding:0 4px}
 @media(prefers-reduced-motion:reduce){
   .nb:active,.tc:active,.fc:active,.cd:active,button:active{transform:none!important}
@@ -312,7 +312,6 @@ textarea.fi{resize:vertical;min-height:76px;font-family:inherit}
 }</style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 <div class="app">
@@ -359,15 +358,14 @@ textarea.fi{resize:vertical;min-height:76px;font-family:inherit}
         <button class="qlog" style="margin:0;flex:1;background:transparent;border:1px solid var(--border);color:var(--dim);font-size:11px;letter-spacing:1px" onclick="document.getElementById('import-file-input').click()">IMPORT DATA</button>
       </div>
       <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="importData(this.files[0]);this.value=''">
-      <div style="display:flex;gap:8px;margin:6px 14px 0">
-        <button class="qlog" style="margin:0;flex:1;background:transparent;border:1px solid var(--border);color:var(--dim);font-size:11px;letter-spacing:1px" onclick="backupToDrive()">BACKUP TO DRIVE</button>
-        <button class="qlog" style="margin:0;flex:1;background:transparent;border:1px solid var(--border);color:var(--dim);font-size:11px;letter-spacing:1px" onclick="restoreFromDrive()">RESTORE FROM DRIVE</button>
-      </div>
       <div id="h-backup-status" style="text-align:center;font-size:11px;padding:6px 14px 0"></div>
       <div id="h-undo-import" style="display:none;text-align:center;padding:2px 14px 4px">
         <button style="background:transparent;border:none;color:var(--dim);font-size:11px;cursor:pointer;text-decoration:underline;letter-spacing:.3px;opacity:.7" onclick="undoLastImport()">↩ undo last import</button>
       </div>
       <div id="h-faceid-toggle" style="text-align:center;padding:2px 14px 0"></div>
+      <div style="text-align:center;padding:2px 14px 0">
+        <button style="background:transparent;border:none;color:var(--dim);font-size:10px;cursor:pointer;opacity:.5;letter-spacing:.3px" onclick="navTo('archive-import')">Import Apple Archive</button>
+      </div>
       <div id="h-auth-link" style="text-align:center;padding:4px 14px 6px"></div>
     </div>
 
@@ -845,6 +843,26 @@ textarea.fi{resize:vertical;min-height:76px;font-family:inherit}
     </div>
   </div>
 
+  <!-- APPLE ARCHIVE IMPORT -->
+  <div class="screen" id="s-archive-import">
+    <div class="hdr">
+      <h1>IMPORT ARCHIVE</h1>
+      <button style="background:transparent;border:none;color:var(--dim);font-size:11px;cursor:pointer" onclick="navTo('home')">BACK</button>
+    </div>
+    <div style="padding:14px">
+      <div style="font-size:11px;color:var(--dim);line-height:1.7;margin-bottom:14px">Select your <strong style="color:var(--text)">AppleJournalEntries</strong> folder. Nothing is uploaded or saved in this step — this is a dry-run scan only.</div>
+      <label style="display:block;width:100%;padding:13px;background:var(--gdim);border:1px solid var(--gold);border-radius:10px;color:var(--gold);font-size:13px;font-weight:700;text-align:center;cursor:pointer;letter-spacing:.5px">
+        SELECT FOLDER
+        <input type="file" id="archive-folder-input" webkitdirectory style="display:none" onchange="runArchiveScan(this.files)">
+      </label>
+      <div id="archive-scan-progress" style="display:none;margin-top:14px;text-align:center;font-size:11px;color:var(--dim);font-family:var(--mono)"></div>
+      <div id="archive-scan-report" style="margin-top:4px"></div>
+      <button id="archive-confirm-btn" style="display:none;width:100%;margin-top:14px;padding:14px;background:linear-gradient(135deg,#145a2e,#2ECC71);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.5px" onclick="runArchiveImport()">CONFIRM IMPORT TO ACCOUNT</button>
+      <div id="archive-import-progress" style="display:none;margin-top:10px;text-align:center;font-size:11px;color:var(--dim);font-family:var(--mono)"></div>
+      <div id="archive-import-log" style="margin-top:4px"></div>
+    </div>
+  </div>
+
   <!-- BOTTOM NAV -->
   <nav class="nav">
     <button class="nb active" id="nb-home" onclick="navTo('home')">
@@ -1038,7 +1056,7 @@ function updateHomeAuthLink() {
   if (currentUser) {
     el.innerHTML = `<button style="background:transparent;border:none;color:var(--dim);font-size:10px;cursor:pointer;opacity:.6;letter-spacing:.3px" onclick="signOut()">Sign Out</button>`;
   } else {
-    el.innerHTML = '';
+    el.innerHTML = `<button style="background:transparent;border:none;color:var(--dim);font-size:10px;cursor:pointer;opacity:.6;letter-spacing:.3px" onclick="showAuthScreen()">Sign In</button>`;
   }
 }
 
@@ -2501,6 +2519,50 @@ function renderAnalytics() {
     }
   }
 
+  // ── SECTION Dx: Isometric Session Win-Rate Bars ───────────────────────────
+  function sessionIsoBarSVG(){
+    const MIN_SESS_ISO=5;
+    const W=38,G=10,D=14,maxH=64,gy=76;
+    const vp=sessions.length*(W+G)-G+D/2+10;
+    const mx=6;
+    const poly=pts=>pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+    let svg='<svg viewBox="0 0 '+vp+' 100" style="width:100%;height:auto;display:block">';
+    svg+='<defs>';
+    sessions.forEach((_,i)=>{
+      svg+='<filter id="sg'+i+'" x="-80%" y="-80%" width="260%" height="260%">'
+        +'<feGaussianBlur stdDeviation="3" result="b"/>'
+        +'<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>'
+        +'</filter>';
+    });
+    svg+='</defs>';
+    sessions.forEach((s,i)=>{
+      const cw=hd[s]['SELL'].wins+hd[s]['BUY'].wins;
+      const ct=hd[s]['SELL'].total+hd[s]['BUY'].total;
+      const x=mx+i*(W+G);
+      if(ct<MIN_SESS_ISO){
+        svg+='<line x1="'+x+'" y1="'+gy+'" x2="'+(x+W)+'" y2="'+gy+'" stroke="#333" stroke-width="1.5"/>';
+        svg+='<text x="'+(x+W/2).toFixed(1)+'" y="'+(gy+11)+'" text-anchor="middle" font-size="8" font-family="DM Serif Display,serif" fill="#444">—</text>';
+        svg+='<text x="'+(x+W/2).toFixed(1)+'" y="'+(gy+21)+'" text-anchor="middle" font-size="6" font-family="Space Mono,monospace" fill="#444">'+s+'</text>';
+        return;
+      }
+      const wr=Math.round(cw/ct*100);
+      const h=Math.max(wr>0?3:0,Math.round(wr/100*maxH));
+      const bar_yt=gy-h;
+      const c=wr>70?'#2ECC71':wr>=50?'#C9A84C':'#E74C3C';
+      svg+='<g style="filter:drop-shadow(0 0 4px '+c+')">';
+      svg+='<polygon points="'+poly([[x,gy],[x+W,gy],[x+W,bar_yt],[x,bar_yt]])+'" fill="'+c+'" fill-opacity="0.82"/>';
+      svg+='<polygon points="'+poly([[x+W,gy],[x+W+D/2,gy-D/2],[x+W+D/2,bar_yt-D/2],[x+W,bar_yt]])+'" fill="'+c+'" fill-opacity="0.42"/>';
+      svg+='<polygon points="'+poly([[x,bar_yt],[x+W,bar_yt],[x+W+D/2,bar_yt-D/2],[x+D/2,bar_yt-D/2]])+'" fill="'+c+'" fill-opacity="1"/>';
+      svg+='</g>';
+      svg+='<text x="'+(x+W/2).toFixed(1)+'" y="'+(gy+11)+'" text-anchor="middle" font-size="9" font-weight="700" font-family="DM Serif Display,serif" fill="var(--text)">'+wr+'%</text>';
+      svg+='<text x="'+(x+W/2).toFixed(1)+'" y="'+(gy+20)+'" text-anchor="middle" font-size="5.5" font-family="Space Mono,monospace" fill="var(--dim)">'+s+'</text>';
+      svg+='<text x="'+(x+W/2).toFixed(1)+'" y="'+(gy+28)+'" text-anchor="middle" font-size="5" font-family="Space Mono,monospace" fill="#555">'+ct+'t</text>';
+    });
+    svg+='</svg>';
+    return svg;
+  }
+  const sDx=`<div class="card"><div class="ct">SESSION PERFORMANCE</div><div style="padding:6px 0">${sessionIsoBarSVG()}</div></div>`;
+
   // ── SECTION I: Win / Loss Insight Pages ──────────────────────────────────
   function buildInsights(){
     const MIN_CL=15,MIN_SESS=5;
@@ -2581,7 +2643,7 @@ function renderAnalytics() {
   })();
   const sJ=`<div class="card"><div class="ct">J — OVERVIEW</div><div style="padding:8px 0">${triSVG}</div></div>`;
 
-  document.getElementById('analytics-body').innerHTML=sAcc+sJ+sA+sB+sC+sD+sE+sF+sG+sH+sI+'<div style="height:8px"></div>';
+  document.getElementById('analytics-body').innerHTML=sAcc+sJ+sA+sB+sC+sD+sE+sF+sG+sH+sDx+sI+'<div style="height:8px"></div>';
 }
 
 // ─────────────────────────────────────────────
@@ -2870,9 +2932,10 @@ function buildBackupPayload() {
   };
 }
 
-function exportData() {
+async function exportData() {
   const today = new Date().toISOString().slice(0,10);
   const payload = buildBackupPayload();
+  try { payload.guestMedia = await guestIdbGetAll(); } catch(_) { payload.guestMedia = {}; }
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -2915,6 +2978,13 @@ function importData(file) {
     if (parsed.mt5ColumnMap && typeof parsed.mt5ColumnMap === 'object') {
       localStorage.setItem('mt5_column_map', JSON.stringify(parsed.mt5ColumnMap));
     }
+    if (parsed.guestMedia && typeof parsed.guestMedia === 'object') {
+      openGuestIdb().then(db => {
+        const tx = db.transaction('media', 'readwrite');
+        const store = tx.objectStore('media');
+        Object.entries(parsed.guestMedia).forEach(([k, v]) => store.put(v, k));
+      }).catch(() => {});
+    }
     navTo(curScreen);
     toast(`Import complete — ${parsed.trades.length} trades loaded`);
   };
@@ -2941,143 +3011,267 @@ function undoLastImport() {
 }
 
 // ─────────────────────────────────────────────
-// GOOGLE DRIVE BACKUP / RESTORE
+// APPLE JOURNAL ARCHIVE IMPORT
+// Pass A: dry-run scan + report (no Supabase writes)
+// Pass B: runArchiveImport() — enabled only after Pass A runs and user is signed in
 // ─────────────────────────────────────────────
-const DRIVE_CLIENT_ID = '989590475720-gq9s3959ba35lfitqcv35qisdgtht80c.apps.googleusercontent.com';
-const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
-const DRIVE_FILENAME = 'trading-journal-backup.json';
+let archiveScanResult = null;
 
-function getDriveToken(callback) {
-  const client = google.accounts.oauth2.initTokenClient({
-    client_id: DRIVE_CLIENT_ID,
-    scope: DRIVE_SCOPE,
-    callback: (response) => {
-      if (response && response.access_token) {
-        callback(response.access_token);
-      } else {
-        toast('Google sign-in failed');
-      }
+async function runArchiveScan(fileList) {
+  const progress = document.getElementById('archive-scan-progress');
+  const report   = document.getElementById('archive-scan-report');
+  const confirmBtn = document.getElementById('archive-confirm-btn');
+  progress.style.display = 'block';
+  progress.textContent   = 'Reading files…';
+  report.innerHTML       = '';
+  confirmBtn.style.display = 'none';
+  archiveScanResult      = null;
+
+  // Partition: HTML entries vs media resources (exclude .json sidecars)
+  const htmlFiles = [], resourceFiles = [];
+  for (const f of fileList) {
+    const p = f.webkitRelativePath || f.name;
+    if (p.includes('/Entries/') && f.name.toLowerCase().endsWith('.html')) {
+      htmlFiles.push(f);
+    } else if (p.includes('/Resources/') && !f.name.toLowerCase().endsWith('.json')) {
+      resourceFiles.push(f);
     }
-  });
-  client.requestAccessToken();
+  }
+
+  // Resource lookup map: lowercase filename → File
+  const resourceMap = new Map();
+  for (const f of resourceFiles) resourceMap.set(f.name.toLowerCase(), f);
+
+  const MB25 = 25 * 1024 * 1024;
+  const entries = [], parseErrors = [];
+
+  for (let i = 0; i < htmlFiles.length; i++) {
+    const f = htmlFiles[i];
+    if (i % 20 === 0) {
+      progress.textContent = `Scanning ${i + 1} of ${htmlFiles.length}…`;
+      await new Promise(r => setTimeout(r, 0)); // yield to browser
+    }
+    try {
+      const text = await f.text();
+      const doc  = new DOMParser().parseFromString(text, 'text/html');
+
+      // Date from filename prefix (YYYY-MM-DD) — authoritative, avoids locale parsing
+      const dateMatch = f.name.match(/^(\d{4}-\d{2}-\d{2})/);
+      if (!dateMatch) { parseErrors.push({file: f.name, reason: 'No YYYY-MM-DD date prefix in filename'}); continue; }
+      const entryDate = dateMatch[1];
+
+      // Title from div.title; fallback: derive from filename
+      const titleEl = doc.querySelector('div.title');
+      let title = titleEl ? titleEl.textContent.trim() : '';
+      if (!title) {
+        title = f.name.replace(/^\d{4}-\d{2}-\d{2}_?/, '').replace(/\.html$/i, '').replace(/_/g, ' ').trim() || entryDate;
+      }
+
+      // Body text from div.bodyText > p elements
+      const bodyEl = doc.querySelector('div.bodyText');
+      let body = '';
+      if (bodyEl) {
+        const paras = Array.from(bodyEl.querySelectorAll('p'))
+          .map(p => p.textContent.trim()).filter(t => t.length > 0);
+        body = paras.join('\n\n');
+      }
+
+      // Media: img.asset_image and video.asset_video src attrs inside assetGrid
+      const mediaSrcs = new Set();
+      doc.querySelectorAll('img.asset_image, video.asset_video').forEach(el => {
+        const src = el.getAttribute('src');
+        if (src) mediaSrcs.add(src.split('/').pop());
+      });
+
+      const matchedMedia = [], unmatched = [];
+      for (const fname of mediaSrcs) {
+        const key = fname.toLowerCase();
+        if (resourceMap.has(key)) {
+          const mf = resourceMap.get(key);
+          matchedMedia.push({name: fname, file: mf, size: mf.size, oversized: mf.size > MB25});
+        } else {
+          unmatched.push(fname);
+        }
+      }
+
+      entries.push({date: entryDate, title, body, matchedMedia, unmatched, htmlFile: f.name});
+    } catch (e) {
+      parseErrors.push({file: f.name, reason: e.message});
+    }
+  }
+
+  // Orphaned resource files: in Resources/ but not referenced by any entry
+  const allReferenced = new Set();
+  entries.forEach(e => e.matchedMedia.forEach(m => allReferenced.add(m.name.toLowerCase())));
+  const orphanedResources = resourceFiles.filter(f => !allReferenced.has(f.name.toLowerCase()));
+
+  // All oversized files anywhere in resources
+  const oversizedList = resourceFiles
+    .filter(f => f.size > MB25)
+    .map(f => ({name: f.name, sizeMB: (f.size / (1024 * 1024)).toFixed(2)}));
+
+  archiveScanResult = {entries, parseErrors, orphanedResources, oversizedList, resourceFiles};
+  renderArchiveScanReport(archiveScanResult);
+  progress.style.display = 'none';
+
+  if (currentUser && entries.length > 0) {
+    confirmBtn.style.display = 'block';
+  } else if (!currentUser && entries.length > 0) {
+    report.innerHTML += `<div style="margin-top:12px;padding:10px 12px;background:rgba(231,76,60,.08);border:1px solid rgba(231,76,60,.25);border-radius:8px;font-size:11px;color:var(--loss)">You must be signed in to import entries. Use the Sign In button on Home.</div>`;
+  }
 }
 
-async function backupToDrive() {
-  getDriveToken(async (token) => {
-    try {
-      const payload = buildBackupPayload();
-      const jsonStr = JSON.stringify(payload, null, 2);
+function renderArchiveScanReport(r) {
+  const report = document.getElementById('archive-scan-report');
+  const totalMatched    = r.entries.reduce((s, e) => s + e.matchedMedia.length, 0);
+  const totalUnmatched  = r.entries.reduce((s, e) => s + e.unmatched.length, 0);
+  const totalOversizedInEntries = r.entries.reduce((s, e) => s + e.matchedMedia.filter(m => m.oversized).length, 0);
 
-      // Search for existing file
-      const searchRes = await fetch(
-        `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`name='${DRIVE_FILENAME}' and trashed=false`)}&fields=files(id,name)`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (!searchRes.ok) {
-        const err = await searchRes.json().catch(() => ({}));
-        toast(`Drive search failed: ${err.error?.message || searchRes.status}`);
-        return;
-      }
-      const searchData = await searchRes.json();
-      const existing = searchData.files && searchData.files[0];
+  let html = `<div class="card" style="margin-top:10px">
+    <div class="ct">SCAN SUMMARY</div>
+    <div class="sg">
+      <div class="sb"><div class="sv g" style="font-size:18px">${r.entries.length}</div><div class="sl">Entries</div></div>
+      <div class="sb"><div class="sv g" style="font-size:18px">${r.resourceFiles.length}</div><div class="sl">Resources</div></div>
+      <div class="sb"><div class="sv g" style="font-size:18px">${totalMatched}</div><div class="sl">Media Matched</div></div>
+      <div class="sb"><div class="sv ${r.parseErrors.length > 0 ? 'l' : 'g'}" style="font-size:18px">${r.parseErrors.length}</div><div class="sl">Parse Errors</div></div>
+      <div class="sb"><div class="sv ${r.orphanedResources.length > 0 ? 'g' : 'g'}" style="font-size:18px">${r.orphanedResources.length}</div><div class="sl">Orphaned</div></div>
+      <div class="sb"><div class="sv ${r.oversizedList.length > 0 ? 'l' : 'g'}" style="font-size:18px">${r.oversizedList.length}</div><div class="sl">Over 25 MB</div></div>
+    </div>
+  </div>`;
 
-      const metadata = { name: DRIVE_FILENAME, mimeType: 'application/json' };
-      const boundary = 'tj_drive_boundary';
-      const body = [
-        `--${boundary}`,
-        'Content-Type: application/json; charset=UTF-8',
-        '',
-        JSON.stringify(metadata),
-        `--${boundary}`,
-        'Content-Type: application/json',
-        '',
-        jsonStr,
-        `--${boundary}--`
-      ].join('\r\n');
+  if (r.oversizedList.length > 0) {
+    html += `<div class="card"><div class="ct" style="color:var(--loss)">OVERSIZED — WILL BE SKIPPED</div>`;
+    r.oversizedList.forEach(f => {
+      html += `<div style="padding:5px 0;border-bottom:1px solid var(--border-muted);font-size:11px;font-family:var(--mono)">${f.name}<span style="float:right;color:var(--loss)">${f.sizeMB} MB</span></div>`;
+    });
+    html += `</div>`;
+  }
 
-      let uploadRes;
-      if (existing) {
-        uploadRes = await fetch(
-          `https://www.googleapis.com/upload/drive/v3/files/${existing.id}?uploadType=multipart`,
-          {
-            method: 'PATCH',
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': `multipart/related; boundary=${boundary}`
-            },
-            body
-          }
-        );
-      } else {
-        uploadRes = await fetch(
-          'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
-          {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': `multipart/related; boundary=${boundary}`
-            },
-            body
-          }
-        );
-      }
+  if (r.parseErrors.length > 0) {
+    html += `<div class="card"><div class="ct" style="color:var(--loss)">PARSE ERRORS (${r.parseErrors.length})</div>`;
+    r.parseErrors.forEach(e => {
+      html += `<div style="padding:5px 0;border-bottom:1px solid var(--border-muted)"><div style="font-size:11px;font-family:var(--mono);color:var(--dim)">${e.file}</div><div style="font-size:10px;color:var(--loss);margin-top:2px">${e.reason}</div></div>`;
+    });
+    html += `</div>`;
+  }
 
-      if (!uploadRes.ok) {
-        const err = await uploadRes.json().catch(() => ({}));
-        toast(`Drive backup failed: ${err.error?.message || uploadRes.status}`);
-        return;
-      }
-      localStorage.setItem('tj_last_export_at', new Date().toISOString());
-      // Re-render backup status text immediately
-      const bsEl = document.getElementById('h-backup-status');
-      if (bsEl) bsEl.innerHTML = '<span style="color:var(--dim)">Last backup: today</span>';
-      toast('Backed up to Drive');
-    } catch (e) {
-      toast(`Drive backup error: ${e.message}`);
-    }
+  if (r.orphanedResources.length > 0) {
+    html += `<div class="card"><div class="ct">ORPHANED RESOURCES (${r.orphanedResources.length})</div>
+      <div style="font-size:10px;color:var(--dim);margin-bottom:8px">Files in Resources/ not referenced by any entry:</div>
+      <div style="max-height:150px;overflow-y:auto">`;
+    r.orphanedResources.forEach(f => {
+      html += `<div style="font-size:10px;padding:3px 0;border-bottom:1px solid var(--border-muted);font-family:var(--mono);color:var(--dim)">${f.name}<span style="float:right">${(f.size/1024).toFixed(0)} KB</span></div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  html += `<div class="card"><div class="ct">ENTRIES (${r.entries.length})</div>
+    <div style="max-height:320px;overflow-y:auto">`;
+  r.entries.forEach(e => {
+    const over = e.matchedMedia.filter(m => m.oversized).length;
+    const overFlag  = over > 0 ? `<span style="color:var(--loss);font-size:9px;margin-left:6px">⚠ ${over} over limit</span>` : '';
+    const unFlag    = e.unmatched.length > 0 ? `<span style="color:var(--exit);font-size:9px;margin-left:6px">⚠ ${e.unmatched.length} unmatched</span>` : '';
+    const noBody    = !e.body ? `<span style="color:var(--dim);font-size:9px;margin-left:6px">no body text</span>` : '';
+    html += `<div style="padding:6px 0;border-bottom:1px solid var(--border-muted)">
+      <div style="font-size:11px;font-weight:700;color:var(--text)">${e.date}&ensp;<span style="font-weight:400;color:var(--dim)">${e.title||'(no title)'}</span></div>
+      <div style="font-size:10px;color:var(--dim);margin-top:2px;font-family:var(--mono)">${e.matchedMedia.length} media${overFlag}${unFlag}${noBody}</div>
+    </div>`;
+  });
+  html += `</div></div>`;
+
+  report.innerHTML = html;
+}
+
+// Pass B placeholder — implemented after user confirms Pass A report
+async function runArchiveImport() {
+  if (!archiveScanResult || !currentUser) return;
+  document.getElementById('archive-confirm-btn').disabled = true;
+  toast('Import not yet enabled — awaiting Pass A confirmation');
+  document.getElementById('archive-confirm-btn').disabled = false;
+}
+
+// ─────────────────────────────────────────────
+// GUEST MEDIA — IndexedDB
+// Phase 7: infrastructure only. Phase 8 (Tip of the Day, AppleJournal)
+// writes image/video here for guest users. Signed-in users use Supabase
+// Storage (journal-media bucket) instead. Video support intentionally
+// excluded from guest export — AppleJournal video goes through Storage.
+// ─────────────────────────────────────────────
+let _guestIdb = null;
+async function openGuestIdb() {
+  if (_guestIdb) return _guestIdb;
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('tj-guest-media', 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore('media');
+    req.onsuccess = e => { _guestIdb = e.target.result; resolve(_guestIdb); };
+    req.onerror = () => reject(req.error);
+  });
+}
+async function guestIdbSet(key, value) {
+  const db = await openGuestIdb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('media', 'readwrite');
+    tx.objectStore('media').put(value, key);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+}
+async function guestIdbGet(key) {
+  const db = await openGuestIdb();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction('media').objectStore('media').get(key);
+    req.onsuccess = () => resolve(req.result ?? null);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function guestIdbGetAll() {
+  const db = await openGuestIdb();
+  return new Promise((resolve, reject) => {
+    const result = {};
+    const req = db.transaction('media').objectStore('media').openCursor();
+    req.onsuccess = e => {
+      const cursor = e.target.result;
+      if (cursor) { result[cursor.key] = cursor.value; cursor.continue(); }
+      else resolve(result);
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+async function guestIdbDelete(key) {
+  const db = await openGuestIdb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('media', 'readwrite');
+    tx.objectStore('media').delete(key);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
   });
 }
 
-async function restoreFromDrive() {
-  getDriveToken(async (token) => {
-    try {
-      // Search for backup file
-      const searchRes = await fetch(
-        `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`name='${DRIVE_FILENAME}' and trashed=false`)}&fields=files(id,name)`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (!searchRes.ok) {
-        const err = await searchRes.json().catch(() => ({}));
-        toast(`Drive search failed: ${err.error?.message || searchRes.status}`);
-        return;
-      }
-      const searchData = await searchRes.json();
-      const existing = searchData.files && searchData.files[0];
+// ─────────────────────────────────────────────
+// SUPABASE STORAGE
+// ─────────────────────────────────────────────
 
-      if (!existing) {
-        toast('No backup found in Drive');
-        return;
-      }
+async function storageUpload(file, filename) {
+  if (!currentUser) return null;
+  const path = `${currentUser.id}/${filename}`;
+  const { error } = await sb.storage.from('journal-media')
+    .upload(path, file, { contentType: file.type, upsert: true });
+  if (error) { console.error('storageUpload:', error.message); return null; }
+  return path;
+}
 
-      // Download file content
-      const dlRes = await fetch(
-        `https://www.googleapis.com/drive/v3/files/${existing.id}?alt=media`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (!dlRes.ok) {
-        const err = await dlRes.json().catch(() => ({}));
-        toast(`Drive download failed: ${err.error?.message || dlRes.status}`);
-        return;
-      }
-      const text = await dlRes.text();
+async function storageGetUrl(path) {
+  if (!currentUser) return null;
+  const { data, error } = await sb.storage.from('journal-media')
+    .createSignedUrl(path, 3600);
+  if (error) { console.error('storageGetUrl:', error.message); return null; }
+  return data.signedUrl;
+}
 
-      // Reuse importData's validation and confirm logic via a synthetic File
-      const file = new File([text], DRIVE_FILENAME, { type: 'application/json' });
-      importData(file);
-    } catch (e) {
-      toast(`Drive restore error: ${e.message}`);
-    }
-  });
+async function storageDelete(path) {
+  if (!currentUser) return;
+  const { error } = await sb.storage.from('journal-media').remove([path]);
+  if (error) console.error('storageDelete:', error.message);
 }
 
 // ─────────────────────────────────────────────
@@ -3397,13 +3591,13 @@ function initTimeWheel() {
   }
   function applyStyle(col) {
     const items=col.querySelectorAll('.wp-item');
-    const center=col.scrollTop+54;
+    const center=col.scrollTop+78;
     items.forEach((el,i)=>{
-      const itemCenter=36*i+18;
+      const itemCenter=52*i+26;
       const dist=Math.abs(center-itemCenter);
-      if(dist<18){el.style.fontSize='18px';el.style.opacity='1';el.style.color='var(--gold)';}
-      else if(dist<36){const t=1-(dist-18)/18;el.style.fontSize=(11+7*t)+'px';el.style.opacity=String(.2+.8*t);el.style.color=t>.5?'var(--gold)':'var(--dim)';}
-      else{el.style.fontSize='11px';el.style.opacity='.2';el.style.color='var(--dim)';}
+      if(dist<26){el.style.fontSize='24px';el.style.opacity='1';el.style.color='var(--gold)';}
+      else if(dist<52){const t=1-(dist-26)/26;el.style.fontSize=(12+12*t)+'px';el.style.opacity=String(.18+.82*t);el.style.color=t>.5?'var(--gold)':'var(--dim)';}
+      else{el.style.fontSize='12px';el.style.opacity='.18';el.style.color='var(--dim)';}
     });
   }
   const hrCol=document.getElementById('wp-hr');
@@ -3412,32 +3606,32 @@ function initTimeWheel() {
   hrCol.addEventListener('scroll',()=>{
     applyStyle(hrCol);
     clearTimeout(hrTimer);
-    hrTimer=setTimeout(()=>syncTimeWheel(),80);
+    hrTimer=setTimeout(()=>syncTimeWheel(),180);
   });
   minCol.addEventListener('scroll',()=>{
     applyStyle(minCol);
     clearTimeout(minTimer);
-    minTimer=setTimeout(()=>syncTimeWheel(),80);
+    minTimer=setTimeout(()=>syncTimeWheel(),180);
   });
   hrCol.addEventListener('click',(e)=>{
     const item=e.target.closest('.wp-item');
     if(!item)return;
     const idx=Array.from(hrRail.children).indexOf(item);
-    hrCol.scrollTo({top:idx*36,behavior:'smooth'});
+    hrCol.scrollTo({top:idx*52,behavior:'smooth'});
   });
   minCol.addEventListener('click',(e)=>{
     const item=e.target.closest('.wp-item');
     if(!item)return;
     const idx=Array.from(minRail.children).indexOf(item);
-    minCol.scrollTo({top:idx*36,behavior:'smooth'});
+    minCol.scrollTo({top:idx*52,behavior:'smooth'});
   });
 }
 function syncTimeWheel() {
   const hrCol=document.getElementById('wp-hr');
   const minCol=document.getElementById('wp-min');
   if(!hrCol||!minCol)return;
-  const h=Math.round(hrCol.scrollTop/36);
-  const m=Math.round(minCol.scrollTop/36);
+  const h=Math.round(hrCol.scrollTop/52);
+  const m=Math.round(minCol.scrollTop/52);
   const hh=Math.max(0,Math.min(23,h));
   const mm=Math.max(0,Math.min(59,m));
   document.getElementById('l-time').value=String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');
@@ -3449,22 +3643,22 @@ function setTimeWheel(timeStr) {
   const parts=(timeStr||'00:00').split(':');
   const h=parseInt(parts[0])||0;
   const m=parseInt(parts[1])||0;
-  hrCol.scrollTop=h*36;
-  minCol.scrollTop=m*36;
+  hrCol.scrollTop=h*52;
+  minCol.scrollTop=m*52;
   syncTimeWheel();
   // Apply visual styles after scroll settles
   setTimeout(()=>{
     hrCol.querySelectorAll('.wp-item').forEach((el,i)=>{
-      const dist=Math.abs(h-i)*36;
-      if(dist<18){el.style.fontSize='18px';el.style.opacity='1';el.style.color='var(--gold)';}
-      else if(dist<36){const t=1-(dist-18)/18;el.style.fontSize=(11+7*t)+'px';el.style.opacity=String(.2+.8*t);el.style.color=t>.5?'var(--gold)':'var(--dim)';}
-      else{el.style.fontSize='11px';el.style.opacity='.2';el.style.color='var(--dim)';}
+      const dist=Math.abs(h-i)*52;
+      if(dist<26){el.style.fontSize='24px';el.style.opacity='1';el.style.color='var(--gold)';}
+      else if(dist<52){const t=1-(dist-26)/26;el.style.fontSize=(12+12*t)+'px';el.style.opacity=String(.18+.82*t);el.style.color=t>.5?'var(--gold)':'var(--dim)';}
+      else{el.style.fontSize='12px';el.style.opacity='.18';el.style.color='var(--dim)';}
     });
     minCol.querySelectorAll('.wp-item').forEach((el,i)=>{
-      const dist=Math.abs(m-i)*36;
-      if(dist<18){el.style.fontSize='18px';el.style.opacity='1';el.style.color='var(--gold)';}
-      else if(dist<36){const t=1-(dist-18)/18;el.style.fontSize=(11+7*t)+'px';el.style.opacity=String(.2+.8*t);el.style.color=t>.5?'var(--gold)':'var(--dim)';}
-      else{el.style.fontSize='11px';el.style.opacity='.2';el.style.color='var(--dim)';}
+      const dist=Math.abs(m-i)*52;
+      if(dist<26){el.style.fontSize='24px';el.style.opacity='1';el.style.color='var(--gold)';}
+      else if(dist<52){const t=1-(dist-26)/26;el.style.fontSize=(12+12*t)+'px';el.style.opacity=String(.18+.82*t);el.style.color=t>.5?'var(--gold)':'var(--dim)';}
+      else{el.style.fontSize='12px';el.style.opacity='.18';el.style.color='var(--dim)';}
     });
   },50);
 }
