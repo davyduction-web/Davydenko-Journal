@@ -960,9 +960,12 @@ textarea.fi{resize:vertical;min-height:76px;font-family:inherit}
     <input id="auth-email" class="auth-input" type="email" placeholder="Email" autocomplete="email">
     <!-- Sign In Stage A: email is shown above, this div holds the action -->
     <div id="auth-si-a" style="display:flex;flex-direction:column;gap:10px">
-      <button id="auth-submit" onclick="sendOtp()" style="width:100%;padding:14px;background:#C9A84C;color:#000;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.5px;margin-top:4px">SEND CODE</button>
+      <input id="auth-signin-pass" class="auth-input" type="password" placeholder="Password" autocomplete="current-password">
+      <button id="auth-submit" onclick="signInWithPassword()" style="width:100%;padding:14px;background:#C9A84C;color:#000;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.5px;margin-top:4px">SIGN IN</button>
       <div style="text-align:center;margin-top:2px">
         <button onclick="showForgotPassword()" style="background:transparent;border:none;color:var(--dim);font-size:11px;cursor:pointer;opacity:.7;letter-spacing:.3px">Forgot password?</button>
+        <span style="color:var(--dim);font-size:11px;opacity:.4;margin:0 5px">·</span>
+        <button id="auth-otp-link" onclick="sendOtp()" style="background:transparent;border:none;color:var(--dim);font-size:11px;cursor:pointer;opacity:.7;letter-spacing:.3px">Sign in with code instead</button>
       </div>
     </div>
     <!-- Sign In Stage B: code entry -->
@@ -1074,8 +1077,8 @@ let _resendCooldown = null;
 async function sendOtp() {
   const email = document.getElementById('auth-email').value.trim();
   if (!email) { authMsg('Enter your email address'); return; }
-  const btn = document.getElementById('auth-submit');
-  btn.textContent = '...'; btn.disabled = true;
+  const btn = document.getElementById('auth-otp-link');
+  btn.textContent = '…'; btn.disabled = true;
   try {
     const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
     if (error) { authMsg(error.message); return; }
@@ -1088,7 +1091,24 @@ async function sendOtp() {
     authMsg('');
     startResendCooldown();
   } finally {
-    btn.textContent = 'SEND CODE'; btn.disabled = false;
+    btn.textContent = 'Sign in with code instead'; btn.disabled = false;
+  }
+}
+
+async function signInWithPassword() {
+  const email = document.getElementById('auth-email').value.trim();
+  const pass  = document.getElementById('auth-signin-pass').value;
+  if (!email || !pass) { authMsg('Enter your email and password'); return; }
+  const btn = document.getElementById('auth-submit');
+  btn.textContent = '...'; btn.disabled = true;
+  try {
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+    if (error) { authMsg(error.message); return; }
+    currentUser = data.user;
+    hideAuthScreen();
+    await initAfterAuth();
+  } finally {
+    btn.textContent = 'SIGN IN'; btn.disabled = false;
   }
 }
 
