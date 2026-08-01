@@ -958,9 +958,29 @@ textarea.fi{resize:vertical;min-height:76px;font-family:inherit}
   </div>
   <div style="width:100%;max-width:320px;display:flex;flex-direction:column;gap:10px">
     <input id="auth-email" class="auth-input" type="email" placeholder="Email" autocomplete="email">
-    <input id="auth-pass" class="auth-input" type="password" placeholder="Password" autocomplete="current-password">
-    <input id="auth-confirm" class="auth-input" type="password" placeholder="Confirm Password" autocomplete="new-password" style="display:none">
-    <button id="auth-submit" onclick="authSubmit()" style="width:100%;padding:14px;background:#C9A84C;color:#000;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.5px;margin-top:4px">SIGN IN</button>
+    <!-- Sign In Stage A: email is shown above, this div holds the action -->
+    <div id="auth-si-a" style="display:flex;flex-direction:column;gap:10px">
+      <button id="auth-submit" onclick="sendOtp()" style="width:100%;padding:14px;background:#C9A84C;color:#000;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.5px;margin-top:4px">SEND CODE</button>
+      <div style="text-align:center;margin-top:2px">
+        <button onclick="showForgotPassword()" style="background:transparent;border:none;color:var(--dim);font-size:11px;cursor:pointer;opacity:.7;letter-spacing:.3px">Forgot password?</button>
+      </div>
+    </div>
+    <!-- Sign In Stage B: code entry -->
+    <div id="auth-si-b" style="display:none;flex-direction:column;gap:10px">
+      <div id="auth-otp-hint" style="font-size:11px;color:var(--dim);text-align:center;line-height:1.5;padding:4px 0"></div>
+      <input id="auth-otp" class="auth-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="000000" autocomplete="one-time-code" style="text-align:center;font-size:22px;letter-spacing:6px">
+      <button id="auth-verify-btn" onclick="verifyOtpSignIn()" style="width:100%;padding:14px;background:#C9A84C;color:#000;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.5px">VERIFY CODE</button>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:0 2px">
+        <button onclick="otpBack()" style="background:transparent;border:none;color:var(--dim);font-size:11px;cursor:pointer;opacity:.8">← Back</button>
+        <button id="otp-resend-btn" onclick="resendOtp()" style="background:transparent;border:none;color:var(--dim);font-size:11px;cursor:pointer;opacity:.8">Resend code</button>
+      </div>
+    </div>
+    <!-- Sign Up fields -->
+    <div id="auth-su-fields" style="display:none;flex-direction:column;gap:10px">
+      <input id="auth-pass" class="auth-input" type="password" placeholder="Password" autocomplete="new-password">
+      <input id="auth-confirm" class="auth-input" type="password" placeholder="Confirm Password" autocomplete="new-password">
+      <button id="auth-signup-btn" onclick="authSubmitSignup()" style="width:100%;padding:14px;background:#C9A84C;color:#000;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.5px;margin-top:4px">CREATE ACCOUNT</button>
+    </div>
     <div id="auth-msg" style="font-size:11px;text-align:center;min-height:16px;color:#E74C3C"></div>
   </div>
   <button onclick="skipAuth()" style="background:transparent;border:none;color:#C9A84C;font-size:11px;cursor:pointer;margin-top:20px;padding:6px 12px;opacity:.75">Continue without account</button>
@@ -995,12 +1015,13 @@ sb.auth.onAuthStateChange((event, session) => {
 let authMode = 'signin';
 function authTab(mode) {
   authMode = mode;
-  const si = document.getElementById('tab-signin');
-  const su = document.getElementById('tab-signup');
-  si.className = mode === 'signin' ? 'auth-tab-active' : 'auth-tab-inactive';
-  su.className = mode === 'signup' ? 'auth-tab-active' : 'auth-tab-inactive';
-  document.getElementById('auth-confirm').style.display = mode === 'signup' ? 'block' : 'none';
-  document.getElementById('auth-submit').textContent = mode === 'signin' ? 'SIGN IN' : 'CREATE ACCOUNT';
+  document.getElementById('tab-signin').className = mode === 'signin' ? 'auth-tab-active' : 'auth-tab-inactive';
+  document.getElementById('tab-signup').className = mode === 'signup' ? 'auth-tab-active' : 'auth-tab-inactive';
+  document.getElementById('auth-email').style.display = 'block';
+  document.getElementById('auth-si-a').style.display = mode === 'signin' ? 'flex' : 'none';
+  document.getElementById('auth-si-b').style.display = 'none';
+  document.getElementById('auth-su-fields').style.display = mode === 'signup' ? 'flex' : 'none';
+  clearResendCooldown();
   authMsg('');
 }
 function authMsg(msg, type) {
@@ -1016,27 +1037,99 @@ function showAuthScreen() {
 function hideAuthScreen() {
   document.getElementById('auth-screen').style.display = 'none';
 }
-async function authSubmit() {
+let _otpEmail = '';
+let _resendCooldown = null;
+
+async function sendOtp() {
+  const email = document.getElementById('auth-email').value.trim();
+  if (!email) { authMsg('Enter your email address'); return; }
+  const btn = document.getElementById('auth-submit');
+  btn.textContent = '...'; btn.disabled = true;
+  try {
+    const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+    if (error) { authMsg(error.message); return; }
+    _otpEmail = email;
+    document.getElementById('auth-otp-hint').textContent = 'Code sent to ' + email;
+    document.getElementById('auth-email').style.display = 'none';
+    document.getElementById('auth-si-a').style.display = 'none';
+    document.getElementById('auth-otp').value = '';
+    document.getElementById('auth-si-b').style.display = 'flex';
+    authMsg('');
+    startResendCooldown();
+  } finally {
+    btn.textContent = 'SEND CODE'; btn.disabled = false;
+  }
+}
+
+async function verifyOtpSignIn() {
+  const code = document.getElementById('auth-otp').value.trim();
+  if (code.length !== 6) { authMsg('Enter the 6-digit code'); return; }
+  const btn = document.getElementById('auth-verify-btn');
+  btn.textContent = '...'; btn.disabled = true;
+  try {
+    const { data, error } = await sb.auth.verifyOtp({ email: _otpEmail, token: code, type: 'email' });
+    if (error) { authMsg(error.message); return; }
+    currentUser = data.user;
+    hideAuthScreen();
+    await initAfterAuth();
+  } finally {
+    btn.textContent = 'VERIFY CODE'; btn.disabled = false;
+  }
+}
+
+function otpBack() {
+  clearResendCooldown();
+  document.getElementById('auth-si-b').style.display = 'none';
+  document.getElementById('auth-email').style.display = 'block';
+  document.getElementById('auth-si-a').style.display = 'flex';
+  authMsg('');
+}
+
+async function resendOtp() {
+  const btn = document.getElementById('otp-resend-btn');
+  btn.disabled = true;
+  const { error } = await sb.auth.signInWithOtp({ email: _otpEmail, options: { shouldCreateUser: false } });
+  if (error) { authMsg(error.message); btn.disabled = false; }
+  else { authMsg('New code sent', 'ok'); startResendCooldown(); }
+}
+
+function startResendCooldown() {
+  const btn = document.getElementById('otp-resend-btn');
+  if (!btn) return;
+  let secs = 60;
+  btn.disabled = true;
+  btn.textContent = 'Resend code (' + secs + 's)';
+  clearResendCooldown();
+  _resendCooldown = setInterval(() => {
+    secs--;
+    if (secs <= 0) {
+      clearResendCooldown();
+      btn.textContent = 'Resend code';
+      btn.disabled = false;
+    } else {
+      btn.textContent = 'Resend code (' + secs + 's)';
+    }
+  }, 1000);
+}
+
+function clearResendCooldown() {
+  if (_resendCooldown) { clearInterval(_resendCooldown); _resendCooldown = null; }
+}
+
+async function authSubmitSignup() {
   const email = document.getElementById('auth-email').value.trim();
   const pass  = document.getElementById('auth-pass').value;
   const conf  = document.getElementById('auth-confirm').value;
-  const btn   = document.getElementById('auth-submit');
-  if(!email || !pass) { authMsg('Enter email and password'); return; }
-  if(authMode === 'signup' && pass !== conf) { authMsg('Passwords do not match'); return; }
+  const btn   = document.getElementById('auth-signup-btn');
+  if (!email || !pass) { authMsg('Enter email and password'); return; }
+  if (pass !== conf) { authMsg('Passwords do not match'); return; }
   btn.textContent = '...'; btn.disabled = true;
   try {
-    if(authMode === 'signup') {
-      const { error } = await sb.auth.signUp({ email, password: pass });
-      if(error) authMsg(error.message);
-      else authMsg('Check your email to confirm your account', 'ok');
-    } else {
-      const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
-      if(error) authMsg(error.message);
-      else { currentUser = data.user; hideAuthScreen(); await initAfterAuth(); }
-    }
+    const { error } = await sb.auth.signUp({ email, password: pass });
+    if (error) authMsg(error.message);
+    else authMsg('Check your email to confirm your account', 'ok');
   } finally {
-    btn.textContent = authMode === 'signin' ? 'SIGN IN' : 'CREATE ACCOUNT';
-    btn.disabled = false;
+    btn.textContent = 'CREATE ACCOUNT'; btn.disabled = false;
   }
 }
 async function signOut() {
