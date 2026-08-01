@@ -365,6 +365,8 @@ textarea.fi{resize:vertical;min-height:76px;font-family:inherit}
       <div id="h-faceid-toggle" style="text-align:center;padding:2px 14px 0"></div>
       <div style="text-align:center;padding:2px 14px 0">
         <button style="background:transparent;border:none;color:var(--dim);font-size:10px;cursor:pointer;opacity:.5;letter-spacing:.3px" onclick="navTo('archive-import')">Import Apple Archive</button>
+        <span style="color:var(--dim);font-size:10px;opacity:.3;margin:0 6px">·</span>
+        <button style="background:transparent;border:none;color:var(--dim);font-size:10px;cursor:pointer;opacity:.5;letter-spacing:.3px" onclick="navTo('archive')">View Archive</button>
       </div>
       <div id="h-auth-link" style="text-align:center;padding:4px 14px 6px"></div>
     </div>
@@ -841,6 +843,15 @@ textarea.fi{resize:vertical;min-height:76px;font-family:inherit}
       <button class="qlog" style="margin-top:8px" onclick="saveAccount()">SAVE ACCOUNT</button>
       <button id="af-archive-btn" class="qlog" style="margin-top:8px;background:transparent;border:1px solid var(--border);color:var(--dim);font-size:11px;display:none" onclick="archiveAccount()">ARCHIVE ACCOUNT</button>
     </div>
+  </div>
+
+  <!-- JOURNAL ARCHIVE VIEW -->
+  <div class="screen" id="s-archive">
+    <div class="hdr">
+      <h1>JOURNAL ARCHIVE</h1>
+      <button style="background:transparent;border:none;color:var(--dim);font-size:11px;cursor:pointer" onclick="navTo('home')">BACK</button>
+    </div>
+    <div id="archive-view-body" style="padding:14px;padding-bottom:80px"></div>
   </div>
 
   <!-- APPLE ARCHIVE IMPORT -->
@@ -1528,6 +1539,7 @@ function navTo(id) {
   else if(id==='weekly') renderWeekly();
   else if(id==='analytics') renderAnalytics();
   else if(id==='accounts') renderAccounts();
+  else if(id==='archive') { _archivePage=0; renderArchive(); }
   else if(id==='check') { /* check screen is stateful, no re-render needed */ }
   else if(id==='log') { if(!LS.editId) resetLog(); }
   animateCardsIn(document.getElementById('s-'+id));
@@ -3509,6 +3521,102 @@ async function runArchiveImport() {
 }
 
 // ─────────────────────────────────────────────
+// JOURNAL ARCHIVE VIEW
+// ─────────────────────────────────────────────
+let _archivePage = 0;
+let _archiveEntries = [];
+let _archiveLbMap = {};  // entryId → [signedUrl, …] for lightbox
+
+async function renderArchive() {
+  const body = document.getElementById('archive-view-body');
+  body.innerHTML = '<div style="text-align:center;font-size:11px;color:var(--dim);padding:30px">Loading…</div>';
+
+  const { data, error } = await sb.from('archive_entries')
+    .select('*')
+    .order('entry_date', { ascending: false });
+
+  if (error) {
+    body.innerHTML = `<div style="color:var(--loss);font-size:11px;padding:14px;text-align:center">${error.message}</div>`;
+    return;
+  }
+  _archiveEntries = data || [];
+  if (!_archiveEntries.length) {
+    body.innerHTML = '<div style="text-align:center;font-size:11px;color:var(--dim);padding:40px 14px;line-height:1.8">No archive entries yet.<br>Use <em>Import Apple Archive</em> to get started.</div>';
+    return;
+  }
+  body.innerHTML = '';
+  await renderArchivePage(body);
+}
+
+async function renderArchivePage(body) {
+  const CHUNK = 20;
+  const start = _archivePage * CHUNK;
+  const slice = _archiveEntries.slice(start, start + CHUNK);
+  if (!slice.length) return;
+
+  // One batch call for all media paths across this page
+  const allPaths = slice.flatMap(e => e.media_paths || []);
+  const urlMap = {};
+  if (allPaths.length) {
+    const { data: urlData } = await sb.storage.from('journal-media').createSignedUrls(allPaths, 3600);
+    (urlData || []).forEach(item => { if (item.signedUrl) urlMap[item.path] = item.signedUrl; });
+  }
+
+  // Remove old "Load more" button before appending new cards
+  const old = document.getElementById('archive-load-more');
+  if (old) old.remove();
+
+  slice.forEach(entry => {
+    const imgUrls = (entry.media_paths || [])
+      .map(p => urlMap[p])
+      .filter(Boolean)
+      .filter(u => !/\.(mp4|mov|m4v|m4a)$/i.test(u));
+    const vidUrls = (entry.media_paths || [])
+      .map(p => urlMap[p])
+      .filter(Boolean)
+      .filter(u => /\.(mp4|mov|m4v)$/i.test(u));
+
+    _archiveLbMap[entry.id] = imgUrls;
+
+    const mediaHtml = (imgUrls.length || vidUrls.length)
+      ? `<div style="display:flex;gap:8px;overflow-x:auto;margin-top:10px;padding-bottom:4px;-webkit-overflow-scrolling:touch">
+           ${imgUrls.map((u, i) => `<img src="${u}" loading="lazy" onclick="openArchiveLb('${entry.id}',${i})" style="height:130px;width:130px;border-radius:8px;object-fit:cover;flex-shrink:0;cursor:pointer">`).join('')}
+           ${vidUrls.map(u => `<video src="${u}" controls playsinline style="height:130px;border-radius:8px;flex-shrink:0;background:#000;max-width:220px"></video>`).join('')}
+         </div>`
+      : '';
+
+    const title = entry.title
+      ? `<div style="font-size:13px;font-weight:700;color:var(--text);margin-top:4px;line-height:1.3">${entry.title}</div>`
+      : '';
+    const bodyText = entry.body
+      ? `<div style="font-size:12px;color:var(--dim);margin-top:6px;line-height:1.65;white-space:pre-wrap">${entry.body}</div>`
+      : '';
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.cssText = 'margin-bottom:10px;padding:12px 14px';
+    card.innerHTML = `<div style="font-size:10px;color:var(--gold);font-family:var(--mono);letter-spacing:.5px">${entry.entry_date}</div>${title}${bodyText}${mediaHtml}`;
+    body.appendChild(card);
+  });
+
+  _archivePage++;
+
+  if (_archivePage * CHUNK < _archiveEntries.length) {
+    const btn = document.createElement('button');
+    btn.id = 'archive-load-more';
+    btn.textContent = 'Load more';
+    btn.style.cssText = 'display:block;width:100%;padding:12px;background:transparent;border:1px solid var(--border);color:var(--dim);font-size:12px;cursor:pointer;border-radius:10px;margin-top:4px;letter-spacing:.3px';
+    btn.onclick = async () => { btn.textContent = 'Loading…'; btn.disabled = true; await renderArchivePage(body); };
+    body.appendChild(btn);
+  }
+}
+
+function openArchiveLb(entryId, idx) {
+  lbImgs = _archiveLbMap[entryId] || [];
+  if (lbImgs.length) openLightbox(idx);
+}
+
+// ─────────────────────────────────────────────
 // GUEST MEDIA — IndexedDB
 // Phase 7: infrastructure only. Phase 8 (Tip of the Day, AppleJournal)
 // writes image/video here for guest users. Signed-in users use Supabase
@@ -3911,7 +4019,7 @@ function initTimeWheel() {
     const items=col.querySelectorAll('.wp-item');
     const center=col.scrollTop+78;
     items.forEach((el,i)=>{
-      const itemCenter=52*i+26;
+      const itemCenter=52*i+78;
       const dist=Math.abs(center-itemCenter);
       if(dist<26){el.style.fontSize='24px';el.style.opacity='1';el.style.color='var(--gold)';}
       else if(dist<52){const t=1-(dist-26)/26;el.style.fontSize=(12+12*t)+'px';el.style.opacity=String(.18+.82*t);el.style.color=t>.5?'var(--gold)':'var(--dim)';}
