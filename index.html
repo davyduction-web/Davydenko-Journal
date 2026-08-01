@@ -981,6 +981,33 @@ textarea.fi{resize:vertical;min-height:76px;font-family:inherit}
       <input id="auth-confirm" class="auth-input" type="password" placeholder="Confirm Password" autocomplete="new-password">
       <button id="auth-signup-btn" onclick="authSubmitSignup()" style="width:100%;padding:14px;background:#C9A84C;color:#000;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.5px;margin-top:4px">CREATE ACCOUNT</button>
     </div>
+    <!-- Reset Password Stage A -->
+    <div id="auth-rp-a" style="display:none;flex-direction:column;gap:10px">
+      <div style="font-size:11px;color:var(--dim);text-align:center;padding:4px 0">Enter your email to receive a reset code</div>
+      <button id="auth-rp-send-btn" onclick="sendResetCode()" style="width:100%;padding:14px;background:#C9A84C;color:#000;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.5px;margin-top:4px">SEND RESET CODE</button>
+      <div style="text-align:center;margin-top:2px">
+        <button onclick="resetBack('a')" style="background:transparent;border:none;color:var(--dim);font-size:11px;cursor:pointer;opacity:.8">← Back to Sign In</button>
+      </div>
+    </div>
+    <!-- Reset Password Stage B -->
+    <div id="auth-rp-b" style="display:none;flex-direction:column;gap:10px">
+      <div id="auth-rp-hint" style="font-size:11px;color:var(--dim);text-align:center;line-height:1.5;padding:4px 0"></div>
+      <input id="auth-rp-otp" class="auth-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="00000000" autocomplete="one-time-code" style="text-align:center;font-size:22px;letter-spacing:6px">
+      <button id="auth-rp-verify-btn" onclick="verifyOtpReset()" style="width:100%;padding:14px;background:#C9A84C;color:#000;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.5px">VERIFY CODE</button>
+      <div style="text-align:center;margin-top:2px">
+        <button onclick="resetBack('b')" style="background:transparent;border:none;color:var(--dim);font-size:11px;cursor:pointer;opacity:.8">← Back</button>
+      </div>
+    </div>
+    <!-- Reset Password Stage C -->
+    <div id="auth-rp-c" style="display:none;flex-direction:column;gap:10px">
+      <div style="font-size:11px;color:var(--dim);text-align:center;padding:4px 0">Choose a new password</div>
+      <input id="auth-rp-pass" class="auth-input" type="password" placeholder="New password" autocomplete="new-password">
+      <input id="auth-rp-confirm" class="auth-input" type="password" placeholder="Confirm new password" autocomplete="new-password">
+      <button id="auth-rp-set-btn" onclick="setNewPassword()" style="width:100%;padding:14px;background:#C9A84C;color:#000;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.5px;margin-top:4px">SET PASSWORD</button>
+      <div style="text-align:center;margin-top:2px">
+        <button onclick="resetBack('c')" style="background:transparent;border:none;color:var(--dim);font-size:11px;cursor:pointer;opacity:.8">← Back</button>
+      </div>
+    </div>
     <div id="auth-msg" style="font-size:11px;text-align:center;min-height:16px;color:#E74C3C"></div>
   </div>
   <button onclick="skipAuth()" style="background:transparent;border:none;color:#C9A84C;font-size:11px;cursor:pointer;margin-top:20px;padding:6px 12px;opacity:.75">Continue without account</button>
@@ -1032,6 +1059,10 @@ function authMsg(msg, type) {
 function showAuthScreen() {
   const si = document.querySelector('#splash img');
   if(si) document.getElementById('auth-logo').src = si.src;
+  ['auth-rp-a','auth-rp-b','auth-rp-c'].forEach(id => document.getElementById(id).style.display = 'none');
+  document.getElementById('tab-signin').style.display = '';
+  document.getElementById('tab-signup').style.display = '';
+  authTab('signin');
   document.getElementById('auth-screen').style.display = 'flex';
 }
 function hideAuthScreen() {
@@ -1132,6 +1163,90 @@ async function authSubmitSignup() {
     btn.textContent = 'CREATE ACCOUNT'; btn.disabled = false;
   }
 }
+let _resetEmail = '';
+
+function showForgotPassword() {
+  document.getElementById('tab-signin').style.display = 'none';
+  document.getElementById('tab-signup').style.display = 'none';
+  document.getElementById('auth-si-a').style.display = 'none';
+  document.getElementById('auth-email').style.display = 'block';
+  document.getElementById('auth-rp-a').style.display = 'flex';
+  authMsg('');
+}
+
+function resetBack(from) {
+  ['auth-rp-a','auth-rp-b','auth-rp-c'].forEach(id => document.getElementById(id).style.display = 'none');
+  authMsg('');
+  if (from === 'a') {
+    document.getElementById('tab-signin').style.display = '';
+    document.getElementById('tab-signup').style.display = '';
+    document.getElementById('auth-si-a').style.display = 'flex';
+  } else if (from === 'b') {
+    document.getElementById('auth-email').style.display = 'block';
+    document.getElementById('auth-rp-a').style.display = 'flex';
+  } else if (from === 'c') {
+    document.getElementById('auth-rp-otp').value = '';
+    document.getElementById('auth-rp-b').style.display = 'flex';
+  }
+}
+
+async function sendResetCode() {
+  const email = document.getElementById('auth-email').value.trim();
+  if (!email) { authMsg('Enter your email address'); return; }
+  const btn = document.getElementById('auth-rp-send-btn');
+  btn.textContent = '...'; btn.disabled = true;
+  try {
+    const { error } = await sb.auth.resetPasswordForEmail(email);
+    if (error) { authMsg(error.message); return; }
+    _resetEmail = email;
+    document.getElementById('auth-rp-hint').textContent = 'Reset code sent to ' + email;
+    document.getElementById('auth-email').style.display = 'none';
+    document.getElementById('auth-rp-a').style.display = 'none';
+    document.getElementById('auth-rp-otp').value = '';
+    document.getElementById('auth-rp-b').style.display = 'flex';
+    authMsg('');
+  } finally {
+    btn.textContent = 'SEND RESET CODE'; btn.disabled = false;
+  }
+}
+
+async function verifyOtpReset() {
+  const code = document.getElementById('auth-rp-otp').value.trim();
+  if (!code) { authMsg('Enter the code from your email'); return; }
+  const btn = document.getElementById('auth-rp-verify-btn');
+  btn.textContent = '...'; btn.disabled = true;
+  try {
+    const { error } = await sb.auth.verifyOtp({ email: _resetEmail, token: code, type: 'recovery' });
+    if (error) { authMsg(error.message); return; }
+    document.getElementById('auth-rp-b').style.display = 'none';
+    document.getElementById('auth-rp-pass').value = '';
+    document.getElementById('auth-rp-confirm').value = '';
+    document.getElementById('auth-rp-c').style.display = 'flex';
+    authMsg('');
+  } finally {
+    btn.textContent = 'VERIFY CODE'; btn.disabled = false;
+  }
+}
+
+async function setNewPassword() {
+  const pass = document.getElementById('auth-rp-pass').value;
+  const conf = document.getElementById('auth-rp-confirm').value;
+  if (!pass) { authMsg('Enter a new password'); return; }
+  if (pass !== conf) { authMsg('Passwords do not match'); return; }
+  const btn = document.getElementById('auth-rp-set-btn');
+  btn.textContent = '...'; btn.disabled = true;
+  try {
+    const { data, error } = await sb.auth.updateUser({ password: pass });
+    if (error) { authMsg(error.message); return; }
+    currentUser = data.user;
+    hideAuthScreen();
+    toast('Password updated — you\'re signed in');
+    await initAfterAuth();
+  } finally {
+    btn.textContent = 'SET PASSWORD'; btn.disabled = false;
+  }
+}
+
 async function signOut() {
   await sb.auth.signOut();
   currentUser = null;
@@ -3275,12 +3390,102 @@ function renderArchiveScanReport(r) {
   report.innerHTML = html;
 }
 
-// Pass B placeholder — implemented after user confirms Pass A report
+// Pass B — real import: upload media → insert archive_entries rows
 async function runArchiveImport() {
   if (!archiveScanResult || !currentUser) return;
-  document.getElementById('archive-confirm-btn').disabled = true;
-  toast('Import not yet enabled — awaiting Pass A confirmation');
-  document.getElementById('archive-confirm-btn').disabled = false;
+
+  const confirmBtn  = document.getElementById('archive-confirm-btn');
+  const progressEl  = document.getElementById('archive-import-progress');
+  const logEl       = document.getElementById('archive-import-log');
+
+  confirmBtn.disabled = true;
+  progressEl.style.display = 'block';
+  progressEl.textContent   = 'Checking for already-imported entries…';
+  logEl.innerHTML = '';
+
+  const entries = archiveScanResult.entries;
+  const total   = entries.length;
+
+  // Pre-fetch existing entry_dates so the import is resumable/idempotent.
+  // RLS ensures we only see the current user's rows.
+  const { data: existing, error: fetchErr } = await sb.from('archive_entries')
+    .select('entry_date');
+  if (fetchErr) {
+    progressEl.textContent = 'Error checking existing entries: ' + fetchErr.message;
+    confirmBtn.disabled = false;
+    return;
+  }
+  const importedDates = new Set((existing || []).map(r => r.entry_date));
+
+  let done = 0, skippedAlready = 0, failedEntries = 0;
+  const skippedMedia = [];
+  const logLines     = [];
+
+  function updateProgress() {
+    progressEl.textContent = `Importing ${done} of ${total} entries…`;
+  }
+  function appendLog(html) {
+    logLines.push(html);
+    logEl.innerHTML = logLines.join('');
+  }
+
+  updateProgress();
+
+  for (const entry of entries) {
+    // Already in DB — skip without touching storage
+    if (importedDates.has(entry.date)) {
+      skippedAlready++;
+      done++;
+      updateProgress();
+      continue;
+    }
+
+    // Upload each matched media file; skip oversized ones
+    const mediaPaths = [];
+    for (const m of entry.matchedMedia) {
+      if (m.oversized) {
+        skippedMedia.push(m.name);
+        continue;
+      }
+      const path = await storageUpload(m.file, m.name);
+      if (path) mediaPaths.push(path);
+    }
+
+    // Insert one row — user_id defaults to auth.uid() via DB default
+    const { error: insertErr } = await sb.from('archive_entries').insert({
+      entry_date:  entry.date,
+      title:       entry.title  || null,
+      body:        entry.body   || null,
+      media_paths: mediaPaths
+    });
+
+    if (insertErr) {
+      failedEntries++;
+      appendLog(`<div style="font-size:10px;color:var(--loss);font-family:var(--mono);padding:2px 0">${entry.date} — insert failed: ${insertErr.message}</div>`);
+    }
+
+    done++;
+    updateProgress();
+  }
+
+  // Summary line
+  const imported   = total - skippedAlready - failedEntries;
+  const alreadyTxt = skippedAlready > 0 ? `, ${skippedAlready} already existed (skipped)` : '';
+  const failedTxt  = failedEntries  > 0 ? `, ${failedEntries} failed` : '';
+  progressEl.textContent = `Done — ${imported} imported${alreadyTxt}${failedTxt}`;
+
+  if (skippedMedia.length > 0) {
+    appendLog(`<div style="font-size:10px;color:var(--dim);font-family:var(--mono);margin-top:6px">Oversized files skipped (${skippedMedia.length}): ${skippedMedia.join(', ')}</div>`);
+  }
+
+  if (failedEntries === 0) {
+    toast(imported > 0 ? `Archive imported: ${imported} entries` : 'All entries already imported');
+    // Leave button disabled — nothing left to do
+  } else {
+    toast(`Import finished — ${failedEntries} entries failed (see log)`);
+    // Re-enable so user can retry; idempotency means only failures will be re-attempted
+    confirmBtn.disabled = false;
+  }
 }
 
 // ─────────────────────────────────────────────
