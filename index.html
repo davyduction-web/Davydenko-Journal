@@ -363,10 +363,13 @@ textarea.fi{resize:vertical;min-height:76px;font-family:inherit}
         <button style="background:transparent;border:none;color:var(--dim);font-size:11px;cursor:pointer;text-decoration:underline;letter-spacing:.3px;opacity:.7" onclick="undoLastImport()">↩ undo last import</button>
       </div>
       <div id="h-faceid-toggle" style="text-align:center;padding:2px 14px 0"></div>
+      <div id="tips-home-card" style="margin:8px 14px 4px;padding:11px 14px;background:var(--s2);border:1px solid var(--border);border-radius:10px;cursor:pointer"></div>
       <div style="text-align:center;padding:2px 14px 0">
         <button style="background:transparent;border:none;color:var(--dim);font-size:10px;cursor:pointer;opacity:.5;letter-spacing:.3px" onclick="navTo('archive-import')">Import Apple Archive</button>
         <span style="color:var(--dim);font-size:10px;opacity:.3;margin:0 6px">·</span>
         <button style="background:transparent;border:none;color:var(--dim);font-size:10px;cursor:pointer;opacity:.5;letter-spacing:.3px" onclick="navTo('archive')">View Archive</button>
+        <span style="color:var(--dim);font-size:10px;opacity:.3;margin:0 6px">·</span>
+        <button style="background:transparent;border:none;color:var(--dim);font-size:10px;cursor:pointer;opacity:.5;letter-spacing:.3px" onclick="navTo('tips-browse')">Tips</button>
       </div>
       <div id="h-auth-link" style="text-align:center;padding:4px 14px 6px"></div>
     </div>
@@ -872,6 +875,34 @@ textarea.fi{resize:vertical;min-height:76px;font-family:inherit}
       <div id="archive-import-progress" style="display:none;margin-top:10px;text-align:center;font-size:11px;color:var(--dim);font-family:var(--mono)"></div>
       <div id="archive-import-log" style="margin-top:4px"></div>
     </div>
+  </div>
+
+  <!-- TIP OF THE DAY — EDIT -->
+  <div class="screen" id="s-tips">
+    <div class="hdr">
+      <h1>TODAY'S TIP</h1>
+      <button style="background:transparent;border:none;color:var(--dim);font-size:11px;cursor:pointer" onclick="navTo('home')">BACK</button>
+    </div>
+    <div style="padding:14px;padding-bottom:80px">
+      <div id="tips-date-lbl" style="font-size:10px;color:var(--gold);font-family:var(--mono);letter-spacing:.5px;margin-bottom:10px"></div>
+      <label class="fl">Note</label>
+      <textarea id="tips-note" class="fi" rows="4" placeholder="What did you learn today?"></textarea>
+      <div style="margin-top:12px">
+        <label class="fl">Images (<span id="tips-cap-lbl">0/10</span>)</label>
+        <div id="tips-slots" class="islots" style="margin-top:6px"></div>
+      </div>
+      <button class="sbtn" style="margin-top:14px" onclick="saveTip()">SAVE TIP</button>
+      <input type="file" id="tips-img-in" accept="image/*" multiple style="display:none" onchange="handleTipsImg(event)">
+    </div>
+  </div>
+
+  <!-- TIP OF THE DAY — BROWSE -->
+  <div class="screen" id="s-tips-browse">
+    <div class="hdr">
+      <h1>TIP ARCHIVE</h1>
+      <button style="background:transparent;border:none;color:var(--dim);font-size:11px;cursor:pointer" onclick="navTo('home')">BACK</button>
+    </div>
+    <div id="tips-browse-body" style="padding:14px;padding-bottom:80px"></div>
   </div>
 
   <!-- BOTTOM NAV -->
@@ -1540,6 +1571,8 @@ function navTo(id) {
   else if(id==='analytics') renderAnalytics();
   else if(id==='accounts') renderAccounts();
   else if(id==='archive') { _archivePage=0; renderArchive(); }
+  else if(id==='tips') { openTipsEdit(); }
+  else if(id==='tips-browse') { _tipsBrowsePage=0; renderTipsBrowse(); }
   else if(id==='check') { /* check screen is stateful, no re-render needed */ }
   else if(id==='log') { if(!LS.editId) resetLog(); }
   animateCardsIn(document.getElementById('s-'+id));
@@ -1683,6 +1716,9 @@ function renderHome() {
     dEl.style.background = up?'var(--delta-up-bg)':'var(--delta-dn-bg)';
     dEl.innerHTML=`<span style="color:${todayCol};font-size:11px;font-weight:700;font-family:'Space Mono',monospace">${arrow} TODAY ${fmt(todayPnl)}</span><span style="color:var(--dim);font-size:10px;font-family:'Space Mono',monospace">vs YDAY ${yNote}</span>`;
   }
+
+  renderTipsHomeCard();
+  loadTodayTip();
 }
 
 function renderCal(y,m,trades,streak) {
@@ -3990,6 +4026,216 @@ function populateAccDropdown(selectedId) {
   sel.innerHTML = '<option value="">— No account selected —</option>' +
     accts.map(a=>`<option value="${a.id}"${a.id===selectedId?' selected':''}>${a.name}</option>`).join('');
   LS.accountId = selectedId||null;
+}
+
+// ─────────────────────────────────────────────
+// TIP OF THE DAY
+// ─────────────────────────────────────────────
+const TIPS_CAP = 10;
+let _tipsToday = null;
+let _tipsPaths = [];
+let _tipsOrigPaths = [];
+let _tipsSrcMap = {};
+let _tipsBrowsePage = 0;
+let _tipsBrowseItems = [];
+let _tipsLbMap = {};
+
+function _todayISO() {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
+}
+
+async function loadTodayTip() {
+  if (!currentUser) { _tipsToday = null; renderTipsHomeCard(); return; }
+  const { data, error } = await sb.from('daily_tips')
+    .select('id,note,media_paths')
+    .eq('user_id', currentUser.id)
+    .eq('entry_date', _todayISO())
+    .maybeSingle();
+  if (error) console.error('loadTodayTip:', error.message);
+  _tipsToday = data || null;
+  renderTipsHomeCard();
+}
+
+function renderTipsHomeCard() {
+  const card = document.getElementById('tips-home-card');
+  if (!card) return;
+  if (!currentUser) {
+    card.onclick = null;
+    card.innerHTML = `<div style="font-size:10px;color:var(--gold);font-family:var(--mono);letter-spacing:.5px;margin-bottom:4px">TIP OF THE DAY</div><div style="font-size:11px;color:var(--dim)">Sign in to use Tip of the Day</div>`;
+    return;
+  }
+  card.onclick = () => navTo('tips');
+  if (!_tipsToday) {
+    card.innerHTML = `<div style="font-size:10px;color:var(--gold);font-family:var(--mono);letter-spacing:.5px;margin-bottom:4px">TIP OF THE DAY</div><div style="font-size:11px;color:var(--dim)">Tap to add today's insight →</div>`;
+    return;
+  }
+  const imgCount = (_tipsToday.media_paths || []).length;
+  const imgBadge = imgCount ? `<span style="font-weight:400"> · ${imgCount} image${imgCount>1?'s':''}</span>` : '';
+  const notePreview = _tipsToday.note
+    ? `<div style="font-size:12px;color:var(--dim);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_tipsToday.note}</div>`
+    : `<div style="font-size:11px;color:var(--dim);margin-top:4px">No note — ${imgCount} image${imgCount!==1?'s':''} saved</div>`;
+  card.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between"><div style="font-size:10px;color:var(--gold);font-family:var(--mono);letter-spacing:.5px;font-weight:700">TIP OF THE DAY${imgBadge}</div><div style="font-size:10px;color:var(--dim)">Edit →</div></div>${notePreview}`;
+}
+
+async function openTipsEdit() {
+  if (!currentUser) { toast('Sign in to use Tip of the Day'); navTo('home'); return; }
+  const dateLbl = document.getElementById('tips-date-lbl');
+  const noteEl = document.getElementById('tips-note');
+  const slotsEl = document.getElementById('tips-slots');
+  const capLbl = document.getElementById('tips-cap-lbl');
+  if (dateLbl) dateLbl.textContent = new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  if (noteEl) noteEl.value = '';
+  if (slotsEl) slotsEl.innerHTML = '<div style="font-size:11px;color:var(--dim);grid-column:1/-1;padding:4px 0">Loading…</div>';
+  if (capLbl) capLbl.textContent = '…';
+
+  const { data } = await sb.from('daily_tips')
+    .select('id,note,media_paths')
+    .eq('user_id', currentUser.id)
+    .eq('entry_date', _todayISO())
+    .maybeSingle();
+  _tipsToday = data || null;
+  _tipsPaths = [...(_tipsToday?.media_paths || [])];
+  _tipsOrigPaths = [..._tipsPaths];
+  _tipsSrcMap = {};
+  if (noteEl) noteEl.value = _tipsToday?.note || '';
+
+  if (_tipsPaths.length) {
+    const { data: urlData } = await sb.storage.from('journal-media').createSignedUrls(_tipsPaths, 3600);
+    (urlData || []).forEach(item => { if (item.signedUrl) _tipsSrcMap[item.path] = item.signedUrl; });
+  }
+  renderTipsSlots();
+}
+
+function renderTipsSlots() {
+  const grid = document.getElementById('tips-slots');
+  const capLbl = document.getElementById('tips-cap-lbl');
+  if (!grid) return;
+  if (capLbl) capLbl.textContent = `${_tipsPaths.length}/${TIPS_CAP}`;
+  let html = '';
+  for (let i = 0; i < _tipsPaths.length; i++) {
+    const src = _tipsSrcMap[_tipsPaths[i]] || '';
+    html += src
+      ? `<div class="isl"><img src="${src}" alt=""><button class="isld" onclick="removeTipSlot(${i})">✕</button></div>`
+      : `<div class="isl"><div class="isll">Loading…</div></div>`;
+  }
+  if (_tipsPaths.length < TIPS_CAP) {
+    html += `<div class="isl" onclick="document.getElementById('tips-img-in').click()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:.4"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><div class="isll">Add image</div></div>`;
+  } else {
+    html += `<div class="isl" style="cursor:default"><div class="isll" style="color:var(--dim);opacity:.5">Max 10<br>remove one to add</div></div>`;
+  }
+  grid.innerHTML = html;
+}
+
+function removeTipSlot(i) {
+  _tipsPaths.splice(i, 1);
+  renderTipsSlots();
+}
+
+async function handleTipsImg(e) {
+  const files = Array.from(e.target.files);
+  e.target.value = '';
+  if (!files.length) return;
+  const room = TIPS_CAP - _tipsPaths.length;
+  if (room <= 0) { toast('10-image cap reached'); return; }
+  const toUpload = files.slice(0, room);
+  if (toUpload.length < files.length) toast(`Cap: only ${toUpload.length} of ${files.length} images added`);
+  const today = _todayISO();
+  for (let n = 0; n < toUpload.length; n++) {
+    const f = toUpload[n];
+    const ext = (f.name.split('.').pop() || 'jpg').toLowerCase();
+    const filename = `tips/${today}-${Date.now()}-${n}.${ext}`;
+    const path = await storageUpload(f, filename);
+    if (!path) { toast('Upload failed — check connection'); continue; }
+    const url = await storageGetUrl(path);
+    if (url) _tipsSrcMap[path] = url;
+    _tipsPaths.push(path);
+  }
+  renderTipsSlots();
+}
+
+async function saveTip() {
+  if (!currentUser) { toast('Sign in to save'); return; }
+  const noteText = (document.getElementById('tips-note')?.value || '').trim();
+  const deleted = _tipsOrigPaths.filter(p => !_tipsPaths.includes(p));
+  for (const p of deleted) await storageDelete(p);
+  const { error } = await sb.from('daily_tips').upsert(
+    { user_id: currentUser.id, entry_date: _todayISO(),
+      note: noteText || null, media_paths: _tipsPaths,
+      updated_at: new Date().toISOString() },
+    { onConflict: 'user_id,entry_date' }
+  );
+  if (error) { toast('Save failed: ' + error.message); return; }
+  _tipsToday = { ...(_tipsToday || {}), note: noteText, media_paths: [..._tipsPaths] };
+  _tipsOrigPaths = [..._tipsPaths];
+  toast('Tip saved ✓');
+  navTo('home');
+}
+
+async function renderTipsBrowse() {
+  const body = document.getElementById('tips-browse-body');
+  if (!currentUser) {
+    body.innerHTML = '<div class="empty"><p>Sign in to browse your tips.</p></div>';
+    return;
+  }
+  body.innerHTML = '<div style="text-align:center;font-size:11px;color:var(--dim);padding:30px">Loading…</div>';
+  const { data, error } = await sb.from('daily_tips')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .order('entry_date', { ascending: false });
+  if (error || !data) { body.innerHTML = '<div class="empty"><p>Error loading tips.</p></div>'; return; }
+  _tipsBrowseItems = data;
+  _tipsLbMap = {};
+  body.innerHTML = '';
+  if (!_tipsBrowseItems.length) {
+    body.innerHTML = '<div class="empty"><p>No tips yet.<br>Add your first insight from the home screen.</p></div>';
+    return;
+  }
+  await renderTipsBrowsePage(body);
+}
+
+async function renderTipsBrowsePage(body) {
+  const CHUNK = 20;
+  const start = _tipsBrowsePage * CHUNK;
+  const slice = _tipsBrowseItems.slice(start, start + CHUNK);
+  if (!slice.length) return;
+  const allPaths = slice.flatMap(t => t.media_paths || []);
+  const urlMap = {};
+  if (allPaths.length) {
+    const { data: urlData } = await sb.storage.from('journal-media').createSignedUrls(allPaths, 3600);
+    (urlData || []).forEach(item => { if (item.signedUrl) urlMap[item.path] = item.signedUrl; });
+  }
+  const old = document.getElementById('tips-browse-load-more');
+  if (old) old.remove();
+  slice.forEach(tip => {
+    const imgUrls = (tip.media_paths || []).map(p => urlMap[p]).filter(Boolean);
+    _tipsLbMap[tip.id] = imgUrls;
+    const noteHtml = tip.note
+      ? `<div style="font-size:12px;color:var(--dim);margin-top:6px;line-height:1.65;white-space:pre-wrap">${tip.note}</div>`
+      : '';
+    const mediaHtml = imgUrls.length
+      ? `<div style="display:flex;gap:8px;overflow-x:auto;margin-top:10px;padding-bottom:4px;-webkit-overflow-scrolling:touch">${imgUrls.map((u,i)=>`<img src="${u}" loading="lazy" onclick="openTipsLb('${tip.id}',${i})" style="height:130px;width:130px;border-radius:8px;object-fit:cover;flex-shrink:0;cursor:pointer">`).join('')}</div>`
+      : '';
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.cssText = 'margin-bottom:10px;padding:12px 14px';
+    card.innerHTML = `<div style="font-size:10px;color:var(--gold);font-family:var(--mono);letter-spacing:.5px">${tip.entry_date}</div>${noteHtml}${mediaHtml}`;
+    body.appendChild(card);
+  });
+  _tipsBrowsePage++;
+  if (_tipsBrowsePage * CHUNK < _tipsBrowseItems.length) {
+    const btn = document.createElement('button');
+    btn.id = 'tips-browse-load-more';
+    btn.textContent = 'Load more';
+    btn.style.cssText = 'display:block;width:100%;padding:12px;background:transparent;border:1px solid var(--border);color:var(--dim);font-size:12px;cursor:pointer;border-radius:10px;margin-top:4px;letter-spacing:.3px';
+    btn.onclick = async () => { btn.textContent = 'Loading…'; btn.disabled = true; await renderTipsBrowsePage(body); };
+    body.appendChild(btn);
+  }
+}
+
+function openTipsLb(tipId, idx) {
+  lbImgs = _tipsLbMap[tipId] || [];
+  if (lbImgs.length) openLightbox(idx);
 }
 
 document.getElementById('lightbox').addEventListener('touchstart',function(e){lbTouchX=e.touches[0].clientX;},{passive:true});
