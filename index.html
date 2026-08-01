@@ -968,7 +968,7 @@ textarea.fi{resize:vertical;min-height:76px;font-family:inherit}
     <!-- Sign In Stage B: code entry -->
     <div id="auth-si-b" style="display:none;flex-direction:column;gap:10px">
       <div id="auth-otp-hint" style="font-size:11px;color:var(--dim);text-align:center;line-height:1.5;padding:4px 0"></div>
-      <input id="auth-otp" class="auth-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="000000" autocomplete="one-time-code" style="text-align:center;font-size:22px;letter-spacing:6px">
+      <input id="auth-otp" class="auth-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="00000000" autocomplete="one-time-code" style="text-align:center;font-size:22px;letter-spacing:6px">
       <button id="auth-verify-btn" onclick="verifyOtpSignIn()" style="width:100%;padding:14px;background:#C9A84C;color:#000;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.5px">VERIFY CODE</button>
       <div style="display:flex;justify-content:space-between;align-items:center;padding:0 2px">
         <button onclick="otpBack()" style="background:transparent;border:none;color:var(--dim);font-size:11px;cursor:pointer;opacity:.8">← Back</button>
@@ -1063,7 +1063,7 @@ async function sendOtp() {
 
 async function verifyOtpSignIn() {
   const code = document.getElementById('auth-otp').value.trim();
-  if (code.length !== 6) { authMsg('Enter the 6-digit code'); return; }
+  if (!code) { authMsg('Enter the code from your email'); return; }
   const btn = document.getElementById('auth-verify-btn');
   btn.textContent = '...'; btn.disabled = true;
   try {
