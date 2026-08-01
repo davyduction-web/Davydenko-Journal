@@ -3565,6 +3565,10 @@ let _archiveLbMap = {};  // entryId → [signedUrl, …] for lightbox
 
 async function renderArchive() {
   const body = document.getElementById('archive-view-body');
+  if (!currentUser) {
+    body.innerHTML = '<div class="empty"><p>Sign in to view your archive.</p></div>';
+    return;
+  }
   body.innerHTML = '<div style="text-align:center;font-size:11px;color:var(--dim);padding:30px">Loading…</div>';
 
   const { data, error } = await sb.from('archive_entries')
@@ -3654,10 +3658,11 @@ function openArchiveLb(entryId, idx) {
 
 // ─────────────────────────────────────────────
 // GUEST MEDIA — IndexedDB
-// Phase 7: infrastructure only. Phase 8 (Tip of the Day, AppleJournal)
-// writes image/video here for guest users. Signed-in users use Supabase
-// Storage (journal-media bucket) instead. Video support intentionally
-// excluded from guest export — AppleJournal video goes through Storage.
+// Infrastructure built in Phase 7, not currently wired to anything.
+// guestIdbSet/guestIdbGet/guestIdbDelete are unused — Tips and Archive
+// were both implemented signed-in only. Kept here if guest-mode media
+// support is added in a future phase. guestIdbGetAll and openGuestIdb
+// are live (used by exportData/importData for the guestMedia field).
 // ─────────────────────────────────────────────
 let _guestIdb = null;
 async function openGuestIdb() {
