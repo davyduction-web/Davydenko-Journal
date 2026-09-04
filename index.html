@@ -411,7 +411,7 @@ textarea.fi{resize:vertical;min-height:76px;font-family:inherit}
 
       <!-- Date / Time -->
       <div class="fs">
-        <div><label class="fl">Date</label><input class="fi" type="date" id="l-date"></div>
+        <div><label class="fl">Date</label><input class="fi" type="date" id="l-date" onchange="const dw=document.getElementById('date-warn');if(dw)dw.style.display='none'"></div>
         <div id="date-warn" style="display:none;color:var(--loss);font-size:11px;margin-top:6px;padding:4px 8px;background:rgba(231,76,60,.08);border-radius:5px;">&#9888; Enter a date</div>
         <div style="margin-top:10px">
           <label class="fl">Time (NY)</label>
@@ -548,7 +548,7 @@ textarea.fi{resize:vertical;min-height:76px;font-family:inherit}
 
       <!-- Chart Images -->
       <div class="fs">
-        <label class="fl">Chart Images (15 slots)</label>
+        <label class="fl">Chart Images (10 slots)</label>
         <div class="islots">
           <div class="isl" id="isl-0" onclick="openSlot(0)">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
@@ -589,26 +589,6 @@ textarea.fi{resize:vertical;min-height:76px;font-family:inherit}
           <div class="isl" id="isl-9" onclick="openSlot(9)">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
             <span class="isll">Chart 10</span>
-          </div>
-          <div class="isl" id="isl-10" onclick="openSlot(10)">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            <span class="isll">Chart 11</span>
-          </div>
-          <div class="isl" id="isl-11" onclick="openSlot(11)">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            <span class="isll">Chart 12</span>
-          </div>
-          <div class="isl" id="isl-12" onclick="openSlot(12)">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            <span class="isll">Chart 13</span>
-          </div>
-          <div class="isl" id="isl-13" onclick="openSlot(13)">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            <span class="isll">Chart 14</span>
-          </div>
-          <div class="isl" id="isl-14" onclick="openSlot(14)">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            <span class="isll">Chart 15</span>
           </div>
         </div>
         <input type="file" id="img-in" accept="image/*" style="display:none" onchange="handleImg(event)">
@@ -1580,13 +1560,22 @@ async function initAfterAuth() {
 // ─────────────────────────────────────────────
 // DATA
 // ─────────────────────────────────────────────
+function _dbSetItem(key,val){
+  try{localStorage.setItem(key,val);return true;}
+  catch(e){
+    if(e.name==='QuotaExceededError'||e.name==='NS_ERROR_DOM_QUOTA_REACHED'||e.code===22){
+      alert('Save failed: device storage is full.\n\nExport a backup to free space, then try again.\n\nYour trade data has NOT been saved.');
+      return false;
+    } else { throw e; }
+  }
+}
 const DB = {
   trades(){try{return JSON.parse(localStorage.getItem('tj_trades')||'[]')}catch{return[]}},
-  save(t){localStorage.setItem('tj_trades',JSON.stringify(t))},
+  save(t){return _dbSetItem('tj_trades',JSON.stringify(t));},
   reviews(){try{return JSON.parse(localStorage.getItem('tj_reviews')||'[]')}catch{return[]}},
-  saveRev(r){localStorage.setItem('tj_reviews',JSON.stringify(r))},
+  saveRev(r){_dbSetItem('tj_reviews',JSON.stringify(r));},
   accounts(){try{return JSON.parse(localStorage.getItem('tj_accounts')||'[]')}catch{return[]}},
-  saveAcc(a){localStorage.setItem('tj_accounts',JSON.stringify(a))}
+  saveAcc(a){_dbSetItem('tj_accounts',JSON.stringify(a));}
 };
 
 // ─────────────────────────────────────────────
@@ -1610,8 +1599,15 @@ function navTo(id) {
   else if(id==='tips') { openTipsEdit(); }
   else if(id==='tips-browse') { _tipsBrowsePage=0; renderTipsBrowse(); }
   else if(id==='check') { /* check screen is stateful, no re-render needed */ }
-  else if(id==='log') { if(!LS.editId) resetLog(); }
+  else if(id==='log') { if(!LS.editId && !_logHasData()) resetLog(); }
   animateCardsIn(document.getElementById('s-'+id));
+}
+
+function _logHasData() {
+  return !!(LS.inst || LS.out || LS.mood || LS.pat || LS.imgs.some(x=>x!==null) ||
+    document.getElementById('l-notes').value ||
+    document.getElementById('l-entry').value ||
+    document.getElementById('l-pnl').value);
 }
 
 function animateCardsIn(screenEl) {
@@ -1651,7 +1647,7 @@ function renderHome() {
   document.getElementById('h-mlbl').textContent = new Date(homeY,homeM,1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
 
   const all = DB.trades();
-  const month = all.filter(t=>{const d=new Date(t.date);return d.getFullYear()===homeY&&d.getMonth()===homeM;});
+  const month = all.filter(t=>{const d=new Date(t.date+'T12:00:00');return d.getFullYear()===homeY&&d.getMonth()===homeM;});
   const act = month.filter(t=>t.outcome!=='MISSED');
   const wins = act.filter(t=>t.outcome==='WIN');
   const pnl = act.reduce((s,t)=>s+(+t.pnl||0),0);
@@ -1666,7 +1662,7 @@ function renderHome() {
   // streak (all time)
   const sorted=[...all].sort((a,b)=>new Date(b.date+' '+(b.time||''))-new Date(a.date+' '+(a.time||'')));
   let streak=0;
-  for(const t of sorted){if(t.outcome==='WIN')streak++;else if(t.outcome==='LOSS'||t.outcome==='EARLY_EXIT')break;}
+  for(const t of sorted){if(t.outcome==='WIN'||(t.outcome==='EARLY_EXIT'&&(+t.pnl||0)>0))streak++;else if(t.outcome==='LOSS'||(t.outcome==='EARLY_EXIT'&&(+t.pnl||0)<=0))break;}
   const se=document.getElementById('h-str');
   se.textContent=streak;
   se.className='sv '+(streak>0?'w':'g');
@@ -1678,7 +1674,7 @@ function renderHome() {
   const cmpEl=document.getElementById('h-compare');
   if(cmpEl){
     const lM=homeM===0?11:homeM-1,lY=homeM===0?homeY-1:homeY;
-    const lastAct=all.filter(t=>{const d=new Date(t.date);return d.getFullYear()===lY&&d.getMonth()===lM&&t.outcome!=='MISSED';});
+    const lastAct=all.filter(t=>{const d=new Date(t.date+'T12:00:00');return d.getFullYear()===lY&&d.getMonth()===lM&&t.outcome!=='MISSED';});
     const lastPnl=lastAct.reduce((s,t)=>s+(+t.pnl||0),0);
     const lastLbl=new Date(lY,lM,1).toLocaleDateString('en-US',{month:'short'});
     const thisLbl=new Date(homeY,homeM,1).toLocaleDateString('en-US',{month:'short'});
@@ -1762,7 +1758,7 @@ function renderCal(y,m,trades,streak) {
   const days=new Date(y,m+1,0).getDate();
   const dm={};
   trades.forEach(t=>{
-    const d=new Date(t.date).getDate();
+    const d=new Date(t.date+'T12:00:00').getDate();
     if(!dm[d])dm[d]={pnl:0,outs:[]};
     dm[d].pnl+=(+t.pnl||0);
     dm[d].outs.push(t.outcome);
@@ -1992,10 +1988,10 @@ const GEN_CL = [
   'No conflicting news'
 ];
 
-let LS = {inst:'',dir:'',mood:'',pat:'',out:'',cl:[],imgs:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],slot:0,editId:null,system:'davydenko',accountId:null};
+let LS = {inst:'',dir:'',mood:'',pat:'',out:'',cl:[],imgs:[null,null,null,null,null,null,null,null,null,null],slot:0,editId:null,system:'davydenko',accountId:null};
 
 function resetLog() {
-  LS = {inst:'',dir:'',mood:'',pat:'',out:'',cl:[],imgs:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],slot:0,editId:null,system:'davydenko',accountId:null};
+  LS = {inst:'',dir:'',mood:'',pat:'',out:'',cl:[],imgs:[null,null,null,null,null,null,null,null,null,null],slot:0,editId:null,system:'davydenko',accountId:null};
   document.getElementById('l-system').value='davydenko';
   populateAccDropdown(null);
   document.getElementById('log-title').textContent='LOG TRADE';
@@ -2008,7 +2004,7 @@ function resetLog() {
   document.getElementById('inst-custom').value='';
   document.getElementById('gb-wrap').style.display='none';
   document.querySelectorAll('#s-log .ib.active,#s-log .db.active,#s-log .mb.active,#s-log .ptb.active,#s-log .ob.active').forEach(b=>b.classList.remove('active'));
-  [0,1,2].forEach(i=>drawSlot(i,null));
+  Array.from({length:10},(_,i)=>i).forEach(i=>drawSlot(i,null));
   renderCL();
   document.getElementById('s-log').scrollTop=0;
 }
@@ -2019,6 +2015,7 @@ function pickInst(btn) {
   LS.inst=btn.dataset.i;
   document.getElementById('inst-custom').value='';
   document.getElementById('gb-wrap').style.display=LS.inst==='XAUUSD'?'block':'none';
+  const iw=document.getElementById('inst-warn');if(iw)iw.style.display='none';
   renderCL();
 }
 
@@ -2027,6 +2024,7 @@ function pickCustom(v) {
   document.querySelectorAll('#s-log .ib').forEach(b=>b.classList.remove('active'));
   LS.inst=v.trim().toUpperCase();
   document.getElementById('gb-wrap').style.display='none';
+  const iw=document.getElementById('inst-warn');if(iw)iw.style.display='none';
   renderCL();
 }
 
@@ -2089,13 +2087,32 @@ function openSlot(i){LS.slot=i;document.getElementById('img-in').click();}
 function handleImg(e) {
   const f=e.target.files[0];if(!f)return;
   const r=new FileReader();
-  r.onload=ev=>{LS.imgs[LS.slot]=ev.target.result;drawSlot(LS.slot,ev.target.result);};
+  r.onload=ev=>{
+    const rawUrl=ev.target.result;
+    const img=new Image();
+    img.onload=()=>{
+      const MAX=1200,SKIP=400;
+      // Skip compression for tiny images (both dims ≤ 400px) — avoids JPEG artifacts on icons
+      if(img.width<=SKIP&&img.height<=SKIP){
+        LS.imgs[LS.slot]=rawUrl;drawSlot(LS.slot,rawUrl);return;
+      }
+      const long=Math.max(img.width,img.height);
+      const scale=long>MAX?MAX/long:1;
+      const w=Math.round(img.width*scale),h=Math.round(img.height*scale);
+      const c=document.createElement('canvas');c.width=w;c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      const compressed=c.toDataURL('image/jpeg',0.8);
+      LS.imgs[LS.slot]=compressed;drawSlot(LS.slot,compressed);
+    };
+    img.src=rawUrl;
+  };
   r.readAsDataURL(f);e.target.value='';
 }
 
 function drawSlot(i,src) {
-  const lbls=['HTF Chart','Entry TF','Result','Chart 4','Chart 5','Chart 6','Chart 7','Chart 8','Chart 9','Chart 10','Chart 11','Chart 12','Chart 13','Chart 14','Chart 15'];
+  const lbls=['HTF Chart','Entry TF','Result','Chart 4','Chart 5','Chart 6','Chart 7','Chart 8','Chart 9','Chart 10'];
   const el=document.getElementById('isl-'+i);
+  if(!el)return; // guard for old trades with images beyond current slot count
   if(src){
     el.innerHTML=`<img src="${src}" alt="chart"><button class="isld" onclick="rmImg(event,${i})">✕</button>`;
     el.onclick=null;
@@ -2133,6 +2150,7 @@ function saveTrade() {
   const trades=DB.trades();
   const trade={
     id: LS.editId||crypto.randomUUID(),
+    createdAt: LS.editId?(DB.trades().find(t=>t.id==LS.editId)?.createdAt||Date.now()):Date.now(),
     date,
     time: document.getElementById('l-time').value,
     instrument: LS.inst,
@@ -2155,13 +2173,14 @@ function saveTrade() {
   };
   if(LS.editId){const idx=trades.findIndex(t=>t.id==LS.editId);if(idx>=0)trades[idx]=trade;}
   else trades.push(trade);
-  DB.save(trades);
+  if(!DB.save(trades)) return;
   if(currentUser){
     if(LS.editId) updateTradeInSupabase(trade).catch(e=>console.error(e));
     else syncTradeToSupabase(trade).catch(e=>console.error(e));
   }
-  toast(LS.editId?'Trade updated ✓':'Trade saved ✓');
-  LS.editId=null;
+  const successMsg = LS.editId?'Trade updated ✓':'Trade saved ✓';
+  resetLog();
+  toast(successMsg);
   setTimeout(()=>navTo('history'),350);
 }
 
@@ -2310,7 +2329,7 @@ function doEdit() {
   curScreen='log';
   // Populate
   LS.editId=t.id;LS.inst=t.instrument;LS.dir=t.direction;LS.mood=t.psychology;LS.pat=t.pattern;LS.out=t.outcome;LS.system=t.system||'davydenko';LS.accountId=t.accountId||null;
-  LS.cl=[...(t.checklist||[])];LS.imgs=[...(t.images||[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null])];
+  LS.cl=[...(t.checklist||[])];LS.imgs=[...(t.images||[null,null,null,null,null,null,null,null,null,null])];
   document.getElementById('log-title').textContent='EDIT TRADE';
   document.getElementById('l-date').value=t.date;
   setTimeWheel(t.time||'00:00');
@@ -2414,6 +2433,7 @@ function renderStats() {
   const all=DB.trades();
   const act=all.filter(t=>t.outcome!=='MISSED');
   const wins=act.filter(t=>t.outcome==='WIN');
+  const profitableEE=act.filter(t=>t.outcome==='EARLY_EXIT'&&(+t.pnl||0)>0);
   const pnl=act.reduce((s,t)=>s+(+t.pnl||0),0);
   const wr=act.length?Math.round(wins.length/act.length*100):0;
   const clean=act.filter(t=>t.clPassed===true);
@@ -2459,7 +2479,7 @@ function renderStats() {
         <div class="sb"><div class="sv g">${all.length}</div><div class="sl">Total Trades</div></div>
         <div class="sb"><div class="sv ${wr>=50?'w':'l'}">${wr}%</div><div class="sl">Win Rate</div></div>
         <div class="sb"><div class="sv ${pnl>=0?'w':'l'}">${pnl>=0?'+':''}$${pnl.toFixed(0)}</div><div class="sl">Net P&amp;L</div></div>
-        <div class="sb"><div class="sv g">${wins.length}/${act.length-wins.length}</div><div class="sl">W / L</div></div>
+        <div class="sb"><div class="sv g">${wins.length+profitableEE.length}/${act.length-wins.length-profitableEE.length}</div><div class="sl">W / L</div></div>
       </div>
     </div>
     <div class="card">
@@ -2513,8 +2533,9 @@ function renderWeekly() {
   const we=new Date(ws);we.setDate(we.getDate()+6);
   const fmt=d=>d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
   document.getElementById('wk-lbl').textContent=`${fmt(ws)} — ${fmt(we)}`;
-  const s=ws.toISOString().slice(0,10);
-  const e=we.toISOString().slice(0,10);
+  const localDateStr=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const s=localDateStr(ws);
+  const e=localDateStr(we);
   const trades=DB.trades().filter(t=>t.date>=s&&t.date<=e);
   const act=trades.filter(t=>t.outcome!=='MISSED');
   const wins=act.filter(t=>t.outcome==='WIN');
@@ -2534,7 +2555,7 @@ function renderWeekly() {
 }
 
 function saveReview() {
-  const ws=getMonday(wkOff).toISOString().slice(0,10);
+  const _wsd=getMonday(wkOff);const ws=`${_wsd.getFullYear()}-${String(_wsd.getMonth()+1).padStart(2,'0')}-${String(_wsd.getDate()).padStart(2,'0')}`;
   const revs=DB.reviews();
   const idx=revs.findIndex(r=>r.ws===ws);
   const r={ws,worked:document.getElementById('wr-worked').value,change:document.getElementById('wr-change').value,intent:document.getElementById('wr-intent').value};
@@ -2644,8 +2665,8 @@ function renderAnalytics() {
     _accSel.innerHTML='<option value="">All Trades</option>'+_accts.map(a=>'<option value="'+a.id+'"'+(a.id===curAnalyticsAccId?' selected':'')+'>'+a.name+'</option>').join('');
   }
   if(curAnalyticsAccId) act=act.filter(t=>t.accountId===curAnalyticsAccId);
-  const wins=act.filter(t=>t.outcome==='WIN');
-  const losses=act.filter(t=>t.outcome==='LOSS'||t.outcome==='EARLY_EXIT');
+  const wins=act.filter(t=>t.outcome==='WIN'||(t.outcome==='EARLY_EXIT'&&(+t.pnl||0)>0));
+  const losses=act.filter(t=>t.outcome==='LOSS'||(t.outcome==='EARLY_EXIT'&&(+t.pnl||0)<=0));
   const earlyExits=act.filter(t=>t.outcome==='EARLY_EXIT');
 
   if(!act.length){
@@ -2763,6 +2784,7 @@ function renderAnalytics() {
 
   // ── SECTION D: Session heatmap ────────────────────────────────────────────
   function getSession(t){
+    if(t.session)return t.session;
     if(!t.time)return null;
     return sessionFromHour(parseInt(t.time.split(':')[0]));
   }
@@ -2803,7 +2825,7 @@ function renderAnalytics() {
   const sorted=[...act].sort((a,b)=>new Date(a.date+' '+(a.time||'00:00'))-new Date(b.date+' '+(b.time||'00:00')));
   let bWin=0,wLoss=0,cW=0,cL=0;const dotArr=[];
   sorted.forEach(t=>{
-    const isW=t.outcome==='WIN',isL=(t.outcome==='LOSS'||t.outcome==='EARLY_EXIT');
+    const isW=t.outcome==='WIN'||(t.outcome==='EARLY_EXIT'&&(+t.pnl||0)>0),isL=t.outcome==='LOSS'||(t.outcome==='EARLY_EXIT'&&(+t.pnl||0)<=0);
     if(isW){cL=0;cW++;if(cW>bWin)bWin=cW;dotArr.push('w');}
     else if(isL){cW=0;cL++;if(cL>wLoss)wLoss=cL;dotArr.push('l');}
     else dotArr.push('n');
@@ -3134,7 +3156,7 @@ function mt5ParseRows(rows, headerIdx, colMap) {
     if(!typeRaw.includes('buy') && !typeRaw.includes('sell')) continue;
     const profit = parseFloat(row[colMap.profit]);
     if(isNaN(profit)) continue;
-    const ticket    = colMap.ticket   !== -1 ? String(row[colMap.ticket]   ?? i) : String(i);
+    const ticket    = colMap.ticket   !== -1 ? String(row[colMap.ticket]   ?? i) : [openTime,symRaw,String(volume),String(profit)].join('|');
     const openTime  = colMap.openTime !== -1 ? String(row[colMap.openTime] ?? '') : '';
     const volume    = colMap.volume   !== -1 ? parseFloat(row[colMap.volume])  || 0 : 0;
     const entryP    = colMap.entryPrice !== -1 ? parseFloat(row[colMap.entryPrice]) || 0 : 0;
@@ -3194,6 +3216,7 @@ function mt5BuildTrade(ticket, symRaw, typeRaw, volume, entryP, exitP, sl, tp, p
   const outcome    = profit > 0 ? 'WIN' : profit < 0 ? 'LOSS' : 'EARLY_EXIT';
   return {
     id: 'mt5_' + ticket + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+    createdAt: Date.now(),
     mt5_ticket: ticket, from_mt5: true,
     instrument, direction, session,
     entryPrice: entryP, exitPrice: exitP,
@@ -3256,7 +3279,8 @@ function doManualImport() {
     const entP  = parseFloat(row[map.entry])||0;
     const extP  = map.exit !== -1 ? parseFloat(row[map.exit])||0 : 0;
     const time  = map.time !== -1 ? String(row[map.time]||'') : '';
-    trades.push(mt5BuildTrade(String(idx), symRaw, typeRaw, vol, entP, extP, '', '', profit, time));
+    const fallbackTicket=[time,symRaw,String(vol),String(profit)].join('|');
+    trades.push(mt5BuildTrade(fallbackTicket, symRaw, typeRaw, vol, entP, extP, '', '', profit, time));
   });
   closeMT5Mapper();
   if(!trades.length) { toast('No valid trades found. Check the file is an MT5 trade history export.'); return; }
@@ -3879,7 +3903,11 @@ function getAccountBalanceHistory(accountId) {
     : '2000-01-01';
   const trades = DB.trades()
     .filter(t=>t.accountId===accountId&&t.outcome!=='MISSED')
-    .sort((x,y)=>{ if(x.date!==y.date)return x.date<y.date?-1:1; return(x.createdAt||0)-(y.createdAt||0); });
+    .sort((x,y)=>{
+      if(x.date!==y.date)return x.date<y.date?-1:1;
+      if(x.createdAt&&y.createdAt)return x.createdAt-y.createdAt;
+      return(x.time||'00:00').localeCompare(y.time||'00:00');
+    });
   const history = [{date:startDateStr, balance:startBal}];
   let bal = startBal;
   for(const t of trades) { bal += (+t.pnl||0); history.push({date:t.date||startDateStr, balance:bal}); }
